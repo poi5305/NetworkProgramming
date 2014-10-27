@@ -3,6 +3,7 @@
 #include <unistd.h> //exec
 #include <unistd.h> // close
 #include <fcntl.h> // open file
+#include <signal.h>
 #include <cstdlib>
 #include <iostream>
 #include <string>
@@ -39,7 +40,7 @@ class parser
 	std::string buf;
 public:
 	
-	std::vector<command> parse_line(const std::string &line)
+	std::vector<command> parse_line_old(const std::string &line)
 	{
 		std::vector<command> pipes;
 		std::vector<std::string> tmp_vec;
@@ -91,7 +92,7 @@ public:
 		}
 		return std::move(pipes);
 	}
-	std::vector<command> parse_line2()
+	std::vector<command> parse_line()
 	{
 		std::vector<command> pipes;
 		std::vector<std::string> argvs;
@@ -110,7 +111,9 @@ public:
 		while(true)
 		{
 			char c = std::cin.get();
-			//std::cout <<"Char " << c << " " << (int)c << std::endl;
+			if(!std::cin.good() || std::cin.eof())
+				exit(0);
+				
 			if(is_still_q1)
 			{
 				if(c == '"')
@@ -268,24 +271,26 @@ class shell
 	std::string buff;
 	parser cmd_parser;
 	std::map<std::string, std::string> ENV;
-	int sockfd;
 	std::map< int, std::pair<int,int> > pipes;
 	int next_command_count;
 public:
-	shell(int sfd)
-		:sockfd(sfd), ENV({{"PATH","bin:."}}), next_command_count(0)
+	shell(int in, int out, int err)
+		:ENV({{"PATH","bin:."}}), next_command_count(0)
 	{
-		
-		close(0);dup(sockfd);
-		close(1);dup(sockfd);
-		close(2);dup(sockfd);
-		close(sockfd);
+		if(in != 0)
+			close(0);dup(in);
+		if(out != 1)
+			close(1);dup(out);
+		//if(err != 2)
+		//	close(2);dup(err);
+		if(in == out && in == err)
+			close(in);
 		
 		print_hello();
 		int n;
 		while(true)
 		{
-			std::string line;
+			//std::string line;
 			//n = readline(line);
 			//if(n == 0)
 			//  console::error("Error! readline failur");
@@ -295,9 +300,9 @@ public:
 			//  print_success();
 			//  continue;
 			//}
-			//std::vector<command> pipes = cmd_parser.parse_line(line);
+			//std::vector<command> pipes = cmd_parser.parse_line_old(line);
 			
-			std::vector<command> pipes = cmd_parser.parse_line2();
+			std::vector<command> pipes = cmd_parser.parse_line();
 			
 			for(auto p:pipes)
 			{
@@ -322,11 +327,6 @@ private:
 	{
 		for(auto &cmd : cmds)
 		{
-			//if(cmd.argv.size() == 0)
-			//{
-			//	cmd.command_idx = 0;
-			//	continue;
-			//}
 			if(cmd.argv[0] == "setenv")
 			{
 				setenv(cmd.argv[1], cmd.argv[2]);
@@ -546,67 +546,94 @@ private:
 	}
 };
 
+
+class server
+{
+public:
+	server(std::function<void()> server_function)
+	{
+		server_function();
+	}
+	
+	server(int address, int port, std::function<void(int)> server_function)
+	{
+		int server_post = port;
+		int sockfd, newsockfd, clilen, child_pid;
+		struct sockaddr_in server_addr, client_addr;
+		std::vector<int> child_pids(0);
+		
+		if ( (sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+			console::error("Error, can't not open socket.");
+		
+		memset((void*) &server_addr, 0, sizeof(server_addr));
+		server_addr.sin_family = AF_INET;
+		server_addr.sin_addr.s_addr = htonl(address);
+		server_addr.sin_port = htons(server_post);
+		
+		if (bind(sockfd, (struct sockaddr *) &server_addr, sizeof(server_addr)) < 0)
+		{
+			std::cout << "Error, can't bind socket" << std::endl;
+			//console::error("Error, can't bind socket");
+			server_addr.sin_port = htons(server_post+1);
+			bind(sockfd, (struct sockaddr *) &server_addr, sizeof(server_addr));
+			std::cout << server_post+1 << std::endl;
+		}
+		listen(sockfd, 1);
+		
+		for(int i=0;i<109;i++)
+		{
+			newsockfd = accept(sockfd, (struct sockaddr *) &client_addr, (socklen_t *) &clilen);
+			//std::cout << client_addr.sin_addr.s_addr << std::endl;
+			if (newsockfd < 0)
+				console::error("Error, can't accept");
+			if ( (child_pid = fork()) < 0  )
+				console::error("Error, can't fork");
+			else if (child_pid == 0)
+			{
+				// child procress
+				close(sockfd);
+				server_function(newsockfd);
+				//shell my_sh(newsockfd);
+				exit(0);
+			}
+			else
+			{
+				// parent procress
+				child_pids.push_back(child_pid);
+			}
+			close(newsockfd);
+		}
+		//for(auto pid:child_pids)
+		//{
+		//	//int status;
+		//	//wait(&status);
+		//}
+		close(sockfd);
+	}
+	
+};
+
+void childhandler(int sig){
+    int status;
+    wait(&status);
+    return;
+}
+
 int main (int argc, char** argv)
 {
-	//shell my_sh(99);
-	//return 0;
-	int server_post = 5566;
-	int sockfd, newsockfd, clilen, child_pid;
-	struct sockaddr_in server_addr, client_addr;
-	std::vector<int> child_pids(0);
+	signal(SIGCHLD, childhandler);
 	
-	if ( (sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
-		console::error("Error, can't not open socket.");
+	std::function<void()> local = [](){
+		shell my_sh(0, 1, 2);
+	};
 	
-	memset((void*) &server_addr, 0, sizeof(server_addr));
-	server_addr.sin_family = AF_INET;
-	server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-	server_addr.sin_port = htons(server_post);
+	std::function<void(int)> remote = [](int sockfd){
+		shell my_sh(sockfd, sockfd, sockfd);
+	};
 	
-	if (bind(sockfd, (struct sockaddr *) &server_addr, sizeof(server_addr)) < 0)
-	{
-		std::cout << "Error, can't bind socket" << std::endl;
-		//console::error("Error, can't bind socket");
-		server_addr.sin_port = htons(server_post+1);
-		bind(sockfd, (struct sockaddr *) &server_addr, sizeof(server_addr));
-		std::cout << server_post+1 << std::endl;
-	}
-		
-		
-	listen(sockfd, 1);
+	//server s(local);
+	server s(INADDR_ANY, 5566, remote);
 	
-	for(int i=0;i<5;i++)
-	{
-		newsockfd = accept(sockfd, (struct sockaddr *) &client_addr, (socklen_t *) &clilen);
-		//std::cout << client_addr.sin_addr.s_addr << std::endl;
-		if (newsockfd < 0)
-			console::error("Error, can't accept");
-		if ( (child_pid = fork()) < 0  )
-			console::error("Error, can't fork");
-		else if (child_pid == 0)
-		{
-			// child procress
-			close(sockfd);
-			shell my_sh(newsockfd);
-			exit(0);
-		}
-		else
-		{
-			// parent procress
-			child_pids.push_back(child_pid);
-		}
-		close(newsockfd);
-	}
-	for(auto pid:child_pids)
-	{
-		int status;
-		wait(&status);
-	}
-	
-	
-	
-	
-	close(sockfd);
 	return 0;
 }
 
