@@ -1,9 +1,11 @@
 #include <sys/socket.h> // socket
+#include <sys/wait.h> // wait
+#include <sys/stat.h> // open flag
 #include <netinet/in.h> // sockaddr_in
-#include <unistd.h> //exec
-#include <unistd.h> // close
+#include <unistd.h> //exec, close
 #include <fcntl.h> // open file
-#include <signal.h>
+#include <signal.h> //signal
+
 #include <cstdlib>
 #include <iostream>
 #include <string>
@@ -71,7 +73,6 @@ public:
 				if(argv.size() == 1)
 					if(argv[argv.size()-1] == '>')
 						file1 = tmp_vec2[i+1];
-				
 			}
 			if(file1 != "")
 				tmp_vec2.erase(tmp_vec2.end()-2, tmp_vec2.end());
@@ -86,9 +87,7 @@ public:
 			//if(pipes.size() != 0)
 			//	pipes[pipes.size()-1].is_end = false;
 			//if(tmp_vec2.size() != 0)
-				pipes.push_back({1, 0, true, tmp_vec2, file1, file2});
-			
-				
+			pipes.push_back({1, 0, true, tmp_vec2, file1, file2});
 		}
 		return std::move(pipes);
 	}
@@ -226,13 +225,9 @@ public:
 						pipe_num = 1;
 					pipes.push_back({pipe_num, 0, false, argvs, file1, file2});
 					
-					argv = "";
-					file1 = "";
-					file2 = "";
+					argv = ""; file1 = ""; file2 = "";
 					argvs.resize(0);
-					is_pipe = false;
-					is_file = false;
-					file_num = 0;
+					is_pipe = false; is_file = false; file_num = 0;
 				}
 				if(argv.size() != 0)
 				{
@@ -251,7 +246,6 @@ public:
 	}
 	void syntax_error(char c)
 	{
-		// empty cin
 		while(true)
 		{
 			char k = std::cin.get();
@@ -262,7 +256,6 @@ public:
 		std::cout << "% ";
 		std::cout.flush();
 	}
-	
 };
 
 class shell
@@ -281,29 +274,15 @@ public:
 			close(0);dup(in);
 		if(out != 1)
 			close(1);dup(out);
-		//if(err != 2)
-		//	close(2);dup(err);
+		if(err != 2)
+			close(2);dup(err);
 		if(in == out && in == err)
 			close(in);
-		
 		print_hello();
 		int n;
 		while(true)
 		{
-			//std::string line;
-			//n = readline(line);
-			//if(n == 0)
-			//  console::error("Error! readline failur");
-			//if(line.find("/") != std::string::npos)
-			//{
-			//  std::cout << "No allow char '/'" << std::endl;
-			//  print_success();
-			//  continue;
-			//}
-			//std::vector<command> pipes = cmd_parser.parse_line_old(line);
-			
 			std::vector<command> pipes = cmd_parser.parse_line();
-			
 			for(auto p:pipes)
 			{
 				break;
@@ -313,12 +292,10 @@ public:
 				std::cerr << "file " << p.file1 << std::endl;
 				std::cerr << "file2 " << p.file2 << std::endl;
 			}
-			
 			if(exam_command(pipes))
 			{
 				run_command(pipes);
 			}
-			
 			print_success();
 		}
 	}
@@ -373,24 +350,28 @@ private:
 	{
 		for(int pipe_i=0; pipe_i < cmds.size(); pipe_i++)
 		{
-			auto &cmd = cmds[pipe_i];
-			if(cmd.command_idx == 0)
-				break;
-			if(cmd.is_end)
-				break;
-			if(pipes.find(cmd.command_idx + cmd.pipe_num) == pipes.end())
-			{
-				int fd[2];
-				if(pipe(fd) == -1)
-					console::error("Error, can't pipe");
-				pipes[cmd.command_idx + cmd.pipe_num] = {fd[0], fd[1]};
-			}	
+			create_pipe(cmds, pipe_i);
+		}
+	}
+	void create_pipe(std::vector<command> &cmds, int pipe_i)
+	{
+		auto &cmd = cmds[pipe_i];
+		if(cmd.command_idx == 0)
+			return;
+		if(cmd.is_end)
+			return;
+		if(pipes.find(cmd.command_idx + cmd.pipe_num) == pipes.end())
+		{
+			int fd[2];
+			if(pipe(fd) == -1)
+				console::error("Error, can't pipe");
+			pipes[cmd.command_idx + cmd.pipe_num] = {fd[0], fd[1]};
+			//std::cerr << fd[0] << fd[1] << std::endl;
 		}
 	}
 	void pipe_tofile(std::vector<command> &cmds, int pipe_i)
 	{
 		auto &cmd = cmds[pipe_i];
-		
 		if(cmd.file1 != "")
 		{
 			int fd;
@@ -447,9 +428,7 @@ private:
 			for(int i=0; i<cmd.argv.size(); i++)
 				argv[i] = cmd.argv[i].c_str();
 			argv[cmd.argv.size()] = 0;
-			
 			std::string filename = test_filename(cmd.argv[0]);
-			
 			int kk = execv(filename.c_str(), (char **)argv);
 			if(kk < 0)
 				std::cout << "Unknown command: [" << cmd.argv[0] << "]." << std::endl;
@@ -458,13 +437,13 @@ private:
 	}
 	void run_command(std::vector<command> &cmds)
 	{
-		// create pipe
-		create_pipe(cmds);
 		for(int pipe_i=0; pipe_i<cmds.size(); pipe_i++)
 		{
 			auto &cmd = cmds[pipe_i];
+			create_pipe(cmds, pipe_i);
+			
 			if(cmd.command_idx == 0) break;
-			run_command_impl(cmds, pipe_i);	
+			run_command_impl(cmds, pipe_i);	 // fork
 			
 			auto iter = pipes.find(cmd.command_idx);
 			if( iter != pipes.end())
@@ -476,21 +455,6 @@ private:
 			int kk;
 			wait(&kk);
 		}
-		//for(auto& cmd : cmds)
-		//{
-			//auto iter = pipes.find(cmd.command_idx);
-			//if( iter != pipes.end())
-			//{
-			//	close(iter->second.first);
-			//	close(iter->second.second);
-			//	pipes.erase(iter);
-			//}
-		//}
-		//for(auto& cmd : cmds)
-		//{
-			//int kk;
-			//wait(&kk);
-		//}
 	}
 	void setenv(const std::string &key, const std::string &value)
 	{
@@ -505,13 +469,11 @@ private:
 		const std::string hello = "****************************************\n** Welcome to the information server. **\n****************************************\n% ";
 		std::cout << hello;
 		std::cout.flush();
-		//writeline(hello);
 	}
 	void print_success()
 	{
 		std::cout << "% ";
 		std::cout.flush();
-		//writeline("% ");
 	}
 	int writeline(const std::string &line)
 	{
@@ -603,14 +565,8 @@ public:
 			}
 			close(newsockfd);
 		}
-		//for(auto pid:child_pids)
-		//{
-		//	//int status;
-		//	//wait(&status);
-		//}
 		close(sockfd);
 	}
-	
 };
 
 void childhandler(int sig){
@@ -620,7 +576,7 @@ void childhandler(int sig){
 }
 
 int main (int argc, char** argv)
-{
+{			
 	signal(SIGCHLD, childhandler);
 	
 	std::function<void()> local = [](){
@@ -636,12 +592,3 @@ int main (int argc, char** argv)
 	
 	return 0;
 }
-
-
-
-
-
-
-
-
-
