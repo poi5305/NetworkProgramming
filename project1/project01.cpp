@@ -317,6 +317,11 @@ public:
 		while(true)
 		{
 			std::vector<command> pipes = cmd_parser.parse_line();
+			//for(auto pipe : pipes)
+			//{
+			//	std::cerr << "argv " << pipe.argv[0] << std::endl;
+			//	std::cerr << "pipe_num " << pipe.pipe_num << std::endl;
+			//}
 			if(exam_command(pipes))
 				run_command(pipes);
 			print_success();
@@ -406,7 +411,7 @@ private:
 	void pipe_handler(std::vector<command> &cmds, int pipe_i)
 	{
 		auto &cmd = cmds[pipe_i];
-		if( pipes.find(cmd.command_idx + cmd.pipe_num) != pipes.end() )
+		if( pipes.find(cmd.command_idx + cmd.pipe_num) != pipes.end() && !cmd.is_end )
 		{//has pipe
 			close(1);
 			dup(pipes[cmd.command_idx + cmd.pipe_num].second);
@@ -549,7 +554,13 @@ int main (int argc, char** argv)
 	std::function<void(int)> remote = [](int sockfd){
 		shell my_sh(sockfd, sockfd, sockfd);
 	};
-	//server s(local);
-	server s(INADDR_ANY, 5566, remote);
+	int port = 0;
+	if(argc > 1)
+		port = atoi(argv[1]);
+	if(port)
+		server s(INADDR_ANY, port, remote);
+	else
+		server s(local);
+	
 	return 0;
 }
