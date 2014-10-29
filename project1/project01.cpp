@@ -16,7 +16,7 @@ void nothinghandler(int sig)
 void childhandler(int sig){
     int status;
     int kk = wait(&status);
-    std::cout << "childhandler " << kk << " " << status << std::endl;
+    //std::cout << "childhandler " << kk << " " << status << std::endl;
     return;
 }
 
