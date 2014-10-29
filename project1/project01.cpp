@@ -11,6 +11,16 @@
 #include <map>
 #include <boost/algorithm/string.hpp>
 
+void nothinghandler(int sig)
+{}
+void childhandler(int sig){
+    int status;
+    int kk = wait(&status);
+    std::cout << "childhandler " << kk << " " << status << std::endl;
+    return;
+}
+
+
 class console
 {
 public:
@@ -467,7 +477,8 @@ private:
 				pipes.erase(iter);
 			}
 			int kk;
-			wait(&kk);
+			int gg = wait(&kk);
+			std::cout << "run_command " << gg << " " << kk << std::endl;
 		}
 	}
 	void print_hello()
@@ -526,6 +537,7 @@ public:
 			else if (child_pid == 0)
 			{// child procress
 				close(sockfd);
+				signal(SIGCHLD, nothinghandler); // child not auto wait
 				server_function(newsockfd);
 				exit(0);
 			}
@@ -539,11 +551,6 @@ public:
 	}
 };
 
-void childhandler(int sig){
-    int status;
-    wait(&status);
-    return;
-}
 
 int main (int argc, char** argv)
 {			
