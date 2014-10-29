@@ -11,15 +11,13 @@
 #include <map>
 #include <boost/algorithm/string.hpp>
 
-void nothinghandler(int sig)
-{}
-void childhandler(int sig){
-    int status;
-    int kk = wait(&status);
-    //std::cout << "childhandler " << kk << " " << status << std::endl;
-    return;
-}
-
+//void nothinghandler(int sig){}
+//void childhandler(int sig){
+//    int status;
+//    int kk = wait(&status);
+//    std::cout << "childhandler " << kk << " " << status << std::endl;
+//    return;
+//}
 
 class console
 {
@@ -478,7 +476,6 @@ private:
 			}
 			int kk;
 			int gg = wait(&kk);
-			std::cout << "run_command " << gg << " " << kk << std::endl;
 		}
 	}
 	void print_hello()
@@ -499,6 +496,7 @@ class server
 public:
 	server(std::function<void()> server_function)
 	{
+		signal(SIGCHLD, [](int k){});
 		server_function();
 	}
 	server(int address, int port, std::function<void(int)> server_function)
@@ -537,7 +535,8 @@ public:
 			else if (child_pid == 0)
 			{// child procress
 				close(sockfd);
-				signal(SIGCHLD, nothinghandler); // child not auto wait
+				signal(SIGCHLD, [](int k){});
+				//signal(SIGCHLD, nothinghandler); // child not auto wait
 				server_function(newsockfd);
 				exit(0);
 			}
@@ -553,8 +552,8 @@ public:
 
 
 int main (int argc, char** argv)
-{			
-	signal(SIGCHLD, childhandler);
+{
+	signal(SIGCHLD, SIG_IGN); // signal(SIGCHLD, childhandler);
 	std::function<void()> local = [](){
 		shell my_sh(0, 1, 2);
 	};
