@@ -5,19 +5,12 @@
 #include <unistd.h> //exec, close
 #include <fcntl.h> // open file
 #include <signal.h> //signal
+#include <stdlib.h> // getenv setenv
 #include <iostream>
 #include <string>
 #include <vector>
 #include <map>
 #include <boost/algorithm/string.hpp>
-
-//void nothinghandler(int sig){}
-//void childhandler(int sig){
-//    int status;
-//    int kk = wait(&status);
-//    std::cout << "childhandler " << kk << " " << status << std::endl;
-//    return;
-//}
 
 class console
 {
@@ -74,6 +67,13 @@ public:
 			}
 			if(c == ' ' || c == '\r') 
 			{}
+			else if(c == '/')
+			{
+				syntax_error(c);
+				argv = ""; file1 = ""; file2 = "";
+				argvs.resize(0); pipes.resize(0);
+				file_num=0; pipe_num=1;
+			}
 			else if(c == '|')
 			{
 				while(true)
@@ -127,6 +127,7 @@ public:
 		}
 		return pipes;
 	}
+private:
 	int parse_next_word(std::string &argv)
 	{
 		while(std::cin.peek() == ' ')
@@ -165,6 +166,7 @@ public:
 	shell(int in, int out, int err)
 		:ENV({{"PATH","bin:."}}), next_command_count(0)
 	{
+		//setenv("PATH", "bin:.", 1);
 		if(in != 0) close(0);dup(in);
 		if(out != 1) close(1);dup(out);
 		if(err != 2) close(2);dup(err);
@@ -175,11 +177,6 @@ public:
 		while(true)
 		{
 			std::vector<command> pipes = cmd_parser.parse_line();
-			//for(auto pipe : pipes)
-			//{
-			//	std::cerr << "argv " << pipe.argv[0] << std::endl;
-			//	std::cerr << "pipe_num " << pipe.pipe_num << std::endl;
-			//}
 			if(exam_command(pipes))
 				run_command(pipes);
 			print_success();
@@ -192,12 +189,22 @@ private:
 		{
 			if(cmd.argv[0] == "setenv")
 			{
-				ENV[cmd.argv[1]] = cmd.argv[2];
+				if(cmd.argv.size() > 2 && cmd.argv[1] != "")
+					ENV[cmd.argv[1]] = cmd.argv[2];
+				//if(cmd.argv.size() > 2 && cmd.argv[1] != "")
+				//	setenv(cmd.argv[1].c_str(), cmd.argv[2].c_str(), 1);
 				return false;
 			}
 			else if(cmd.argv[0] == "printenv")
 			{
-				std::cout << cmd.argv[1] << "=" << ENV[cmd.argv[1]] << std::endl;
+				if(cmd.argv.size() > 1 && ENV.find(cmd.argv[1]) != ENV.end())
+					std::cout << cmd.argv[1] << "=" << ENV[cmd.argv[1]] << std::endl;
+				//if(cmd.argv.size() > 1 && cmd.argv[1] != "")
+				//{
+				//	char *iter = getenv(cmd.argv[1].c_str());
+				//	if(iter)
+				//		std::cout << cmd.argv[1] << "=" << iter << std::endl;
+				//}
 				return false;
 			}
 			else if(cmd.argv[0] == "exit")
@@ -325,7 +332,7 @@ private:
 				pipes.erase(iter);
 			}
 			int kk;
-			int gg = wait(&kk);
+			wait(&kk);
 		}
 	}
 	void print_hello()
@@ -374,7 +381,7 @@ public:
 		}
 		listen(sockfd, 1);
 		
-		for(int i=0;i<109;i++)
+		for(int i=0; ;i++)
 		{
 			newsockfd = accept(sockfd, (struct sockaddr *) &client_addr, (socklen_t *) &clilen);
 			//std::cout << client_addr.sin_addr.s_addr << std::endl;
@@ -399,7 +406,6 @@ public:
 		close(sockfd);
 	}
 };
-
 
 int main (int argc, char** argv)
 {
