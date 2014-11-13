@@ -236,10 +236,118 @@ void qsort(std::vector<int>::iterator iter_a, std::vector<int>::iterator iter_b)
 	qsort(iter_max+1, iter_b);
 }
 
+//#include "test2.hpp"
+
+static int gg = 9;
+extern int gg;
 
 
+class cell_phone
+{
+public:
+	int price;
+	std::string brand;
+	cell_phone()
+		:price(100), brand("HTC")
+	{}
+	friend std::ostream& operator<<(std::ostream &out, const cell_phone &c)
+	{
+		out << c.price << " " << c.brand << std::endl;
+		return out;
+	}
+	~cell_phone()
+	{
+		std::cout << "Bye~" << std::endl;
+	}
+};
+class smart_phone
+	:public cell_phone
+{
+public:
+	smart_phone()
+	{
+		
+	}
+	friend std::ostream& operator<<(std::ostream &out, const smart_phone &s)
+	{
+		out << s.price << " none name" << std::endl;
+		return out;
+	}
+};
+
+struct B
+{
+	typedef B TYPE; 
+	void p()
+	{
+		auto p = (this);
+		//p->print();
+		this->print();
+	}
+	void print()
+	{
+		std::cout << "B" << std::endl;
+	}
+};
+struct D
+	:B
+{
+	typedef D TYPE;
+	void print()
+	{
+		std::cout << "D" << std::endl;
+	}
+};
+
+template<class T>
+void print(T &t)
+{
+	t.print();
+}
+
+// void (*aa) (int, int)
 int main()
 {
+	int kk = 0;
+	auto gg = reinterpret_cast<std::vector<int>*> (&kk);
+	//char *aa[2] = {"aaa"};
+	//cell_phone cc;
+	//smart_phone sp;
+	//out(cc);
+	//out(sp);
+	
+	int a = 1 << 1 + 2*2 >> 2;
+	std::cout << a << std::endl;
+	//B b;
+	D d;
+	
+	B &b1 = d;
+	//b1.p();
+	//b1.print();
+	
+	uint32_t b = 0;
+	uint32_t c = 165;
+	
+	b = (~c) >> 4;
+
+	
+	std::cout << b << std::endl;
+	
+	//print(b1);
+	
+	
+	//std::cout << cc << std::endl;
+	//std::cout << sp << std::endl;
+	
+	//int gg[1];
+	//int *kk = gg;
+	//unsigned int a = 0XA5;
+	//unsigned int b = ~a>>4;
+	//aaa::kk++;
+	//std::cout <<gg << " " << aaa::kk << std::endl;
+
+
+return 0;
 /*
 	std::vector<int> array {6, 2, 7, 5, 3, 9, 3};
 	qsort(array.begin(), array.end());

@@ -34,6 +34,7 @@ struct command
 	std::vector<std::string> argv;
 	std::string file1;
 	std::string file2;
+	int ignore;
 };
 
 class parser
@@ -44,7 +45,7 @@ public:
 		std::vector<command> pipes;
 		std::vector<std::string> argvs;
 		std::string argv, file1, file2;
-		int file_num = 0, pipe_num = 1;
+		int file_num = 0, pipe_num = 1, ignore=0;
 		while(true)
 		{
 			char c = std::cin.get();
@@ -74,6 +75,24 @@ public:
 				argvs.resize(0); pipes.resize(0);
 				file_num=0; pipe_num=1;
 			}
+			else if(c == '%')
+			{
+				while(true)
+				{
+				  char nc = std::cin.peek();
+				  if(nc >= 48 && nc <= 57)// is 0~9
+				  	argv.push_back(std::cin.get());
+				  else
+				  	break;
+				}
+				ignore = std::atoi(argv.c_str());
+				
+				pipes.push_back({1, 0, true, argvs, file1, file2, ignore});
+				argv = ""; file1 = ""; file2 = "";
+				argvs.resize(0);
+				ignore = 0;
+				pipe_num = 1;
+			}
 			else if(c == '|')
 			{
 				while(true)
@@ -87,7 +106,7 @@ public:
 				pipe_num = std::atoi(argv.c_str());
 				if(pipe_num == 0)
 					pipe_num = 1;
-				pipes.push_back({pipe_num, 0, false, argvs, file1, file2});
+				pipes.push_back({pipe_num, 0, false, argvs, file1, file2, 0});
 				argv = ""; file1 = ""; file2 = "";
 				argvs.resize(0);				
 				pipe_num = 1;
@@ -119,7 +138,7 @@ public:
 			else if(c == '\n')
 			{
 				if(argvs.size() > 0)
-					pipes.push_back({pipe_num, 0, true, argvs, file1, file2});
+					pipes.push_back({pipe_num, 0, true, argvs, file1, file2, 0});
 				break;
 			}
 			else
@@ -162,9 +181,10 @@ class shell
 	std::map<std::string, std::string> ENV;
 	std::map< int, std::pair<int,int> > pipes;
 	int next_command_count;
+	int ignore;
 public:
 	shell(int in, int out, int err)
-		:ENV({{"PATH","bin:."}}), next_command_count(0)
+		:ENV({{"PATH","bin:."}}), next_command_count(0), ignore(0)
 	{
 		//setenv("PATH", "bin:.", 1);
 		if(in != 0) close(0);dup(in);
@@ -187,6 +207,12 @@ private:
 	{
 		for(auto &cmd : cmds)
 		{
+			std::cout << "ignore " << ignore << " " << cmd.ignore << std::endl;
+			if(ignore !=0)
+			{
+				ignore --;
+				return false;
+			}
 			if(cmd.argv[0] == "setenv")
 			{
 				if(cmd.argv.size() > 2 && cmd.argv[1] != "")
@@ -219,9 +245,18 @@ private:
 			}
 			else
 			{
-				next_command_count++;
-				cmd.command_idx = next_command_count;
+				if(cmd.ignore != 0)
+				{
+					ignore += cmd.ignore;
+					
+				}
+				//else
+				{
+					next_command_count++;
+					cmd.command_idx = next_command_count;
+				}
 			}
+			
 		}
 		return true;
 	}
@@ -319,10 +354,24 @@ private:
 		for(int pipe_i=0; pipe_i<cmds.size(); pipe_i++)
 		{
 			auto &cmd = cmds[pipe_i];
+			
+			//if(ignore !=0)
+			//{
+				//ignore --;
+			//	continue;
+			//}
+			//if(cmd.ignore != 0)
+			//	ignore += cmd.ignore;
+			
 			create_pipe(cmds, pipe_i);
 			
 			if(cmd.command_idx == 0) break;
+			
+			
+			
 			run_command_impl(cmds, pipe_i);	 // fork
+			
+			
 			
 			auto iter = pipes.find(cmd.command_idx);
 			if( iter != pipes.end())
@@ -333,6 +382,8 @@ private:
 			}
 			int kk;
 			wait(&kk);
+			
+			
 		}
 	}
 	void print_hello()
