@@ -72,7 +72,7 @@ int main (int argc, char** argv)
 				if(new_socket < 0)
 					console::error("Can't accept");
 				FD_SET(new_socket, &active_fds);
-				shell_sets.insert({new_socket, shell(new_socket, "Unknow") });
+				shell_sets.insert({new_socket, shell(new_socket, "no name") });
 				
 				
 				char ip[INET_ADDRSTRLEN];

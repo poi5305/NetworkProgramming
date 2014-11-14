@@ -6,15 +6,95 @@
 #include <vector>
 #include <map>
 #include <boost/algorithm/string.hpp>
+#include <signal.h>
 #include "parser.hpp"
 
-struct user
+
+#define USER_LEN 10
+#define FIFO_LEN 20
+#define MSG_LEN 200
+#define MSG_NUM 5
+
+struct user2
 {
 	int socket_fd;
 	std::string name;
 	std::string port;
 	std::string ip;
 };
+
+struct user
+{
+	int state;
+	int socket_fd;
+	int pid;
+	char port[6];
+	char name[30];
+	char ip[15];
+};
+
+struct fifo
+{
+	int state;
+	int from_user;
+	int to_user;
+	int read_fd;
+	int write_fd;
+};
+
+struct msg
+{
+	int state;
+	int from_user;
+	int to_user;
+	char msg[MSG_LEN];
+};
+
+
+struct shared
+{
+	user users[USER_LEN];
+	fifo chart_fifo[FIFO_LEN];
+	msg msgs[MSG_NUM];
+	int broadcast_user;
+	char broadcast[MSG_LEN];
+};
+
+shared *p_shared;
+
+user *users;
+fifo *chart_fifo;
+
+//user users[USER_LEN];
+//fifo chart_fifo[FIFO_LEN];
+
+int find(user us[], int key)
+{
+	for(int i=1; i<USER_LEN; ++i)
+	{
+		if(us[i].state == 1 && i == key)
+			return i;
+	}
+	return -1;
+}
+int find(fifo cf[], int from_user, int to_user)
+{
+	for(int i=0; i<FIFO_LEN; ++i)
+	{
+		if(cf[i].state > 0 && cf[i].from_user == from_user && cf[i].to_user == to_user)
+			return i;
+	}
+	return -1;
+}
+void remove(user us[], int key)
+{
+	us[key].state = 0;
+	us[key].socket_fd = 0;
+	//us[key].port[0] = '\0';
+	//us[key].name[0] = '\0';
+	//us[key].ip[0] = '\0';
+}
+
 
 class shell
 {
@@ -24,21 +104,26 @@ class shell
 	
 	int next_command_count;
 	
-	
 	std::string socket_name;
 	bool is_exit;
 public:
-	int user_id;
+	static int user_id;
 	int socket_fd;
-	static std::map<int, user> users;
-	static std::map<std::pair<int, int>, std::pair<int, int>> chart_fifo; // userid, userid, ??
+	//static std::map<int, user> users;
+	//static std::map<std::pair<int, int>, std::pair<int, int>> chart_fifo; // userid, userid, ??
 	shell()
 	{}
 	shell(int sockfd, std::string sockname)
 		:ENV({{"PATH","bin:."}}), next_command_count(0), socket_fd(sockfd), socket_name(sockname), is_exit(false)
 	{
+		//user2 {socket_fd, socket_name, "", ""};
 		user_id = get_user_new_id();
-		users[user_id] = {socket_fd, socket_name, "", ""};
+		std::cerr << "user_id: " << user_id << " " << std::endl;
+		//users[user_id] = {socket_fd, socket_name, "", ""};
+		users[user_id].state = 1;
+		users[user_id].socket_fd = socket_fd;
+		strcpy(users[user_id].name, socket_name.c_str());
+		
 		update_fd();
 		print_hello();
 		
@@ -62,13 +147,88 @@ public:
 			print_success();
 		}
 	}
+	shell(int sockfd, int pid, std::string sockname, std::string ip, std::string port)
+		:ENV({{"PATH","bin:."}}), next_command_count(0), socket_fd(sockfd), socket_name(sockname), is_exit(false)
+	{
+		// broad cast
+		signal(SIGUSR1, [](int k){
+			std::cout << p_shared->broadcast;
+			if(p_shared->broadcast_user != shell::user_id)
+				std::cout << "% ";
+			std::cout.flush();
+		});
+		// tell msg
+		signal(SIGUSR2, [](int k){
+			for(int i=0; i<FIFO_LEN; i++)
+			{
+				auto &fifo = p_shared->chart_fifo[i];
+				if(fifo.state == 2 && fifo.from_user == shell::user_id)
+				{
+					close(fifo.read_fd);
+					close(fifo.write_fd);
+				}
+			}
+		
+			for(int i=0; i<MSG_NUM; i++)
+			{
+				auto &msg = p_shared->msgs[i];
+				if(msg.state == 1 && msg.to_user == shell::user_id)
+				{
+					msg.state = 0;
+					std::cout << msg.msg;
+					if(msg.from_user != shell::user_id)
+						std::cout << "% ";
+					std::cout.flush();
+				}
+			}
+		});
+		
+		close(0);dup(sockfd);
+		close(1);dup(sockfd);
+		//close(2);dup(sockfd);
+		//close(sockfd);
+		console::debug("Shell Prerare");
+		
+		
+		
+		user_id = get_user_new_id();
+		console::debug("Shell Prerare2");
+		std::cerr << "user_id: " << user_id << " " << std::endl;
+		users[user_id].state = 1;
+		users[user_id].socket_fd = socket_fd;
+		users[user_id].pid = pid;
+		strcpy(users[user_id].name, socket_name.c_str());
+		strcpy(users[user_id].ip, ip.c_str());
+		strcpy(users[user_id].port, port.c_str());
+		
+		console::debug("Shell Listen");
+		print_hello();
+		while(true)
+		{
+			std::vector<command> pipes = cmd_parser.parse_line();
+			debug_cmd(pipes);
+			if(exam_command(pipes))
+				run_command(pipes);
+			print_success();
+		}
+	}
 	void update_ip_port(std::string ip, std::string port)
 	{
-		users[user_id].ip = ip;
-		users[user_id].port = port;
+		//users[user_id].ip = ip;
+		//users[user_id].port = port;
+		strcpy(users[user_id].ip, ip.c_str());
+		strcpy(users[user_id].port, port.c_str());
+		//*** User '(no name)' entered from (IP/port). ***
+		std::string msg;
+		msg += "*** User '(no name)' entered from ("+ip+"/"+port+"). ***\n";
+		yell(msg);
+		print_success();
 	}
 	void update_fd()
 	{
+		if(socket_fd < 3)
+			return;
+		//console::error("Error, update_fd can't smaller than 3");
 		std::cerr << "close 0, 1. dup " << socket_fd << std::endl;
 		close(0);dup(socket_fd);
 		close(1);dup(socket_fd);
@@ -77,7 +237,8 @@ public:
 	void update_fd(int fd)
 	{
 		if(fd < 3)
-			console::error("Error, update_fd can't smaller than 3");
+			return;
+		//console::error("Error, update_fd can't smaller than 3");
 		std::cerr << "close 0, 1. dup " << fd << std::endl;
 		close(0);dup(fd);
 		close(1);dup(fd);
@@ -168,7 +329,7 @@ private:
 				if(cmd.argv.size() > 1 && cmd.argv[1] != "")
 				{
 					std::string msg("");
-					msg += "*** " + users[user_id].name + " yelled ***: ";//*** (sender's name) yelled ***: (message)
+					msg += std::string("*** ") + users[user_id].name + " yelled ***: ";//*** (sender's name) yelled ***: (message)
 					for(int i=1; i<cmd.argv.size(); i++)
 						msg += cmd.argv[i];
 					yell( msg+"\n" );
@@ -182,7 +343,8 @@ private:
 					int to_user_id = atoi(cmd.argv[1].c_str());
 					
 					//*** Error: user #3 does not exist yet. ***
-					if(users.find(to_user_id) == users.end())
+					if(find(users, to_user_id) == -1)
+					//if(users.find(to_user_id) == users.end())
 					{
 						std::cout << "*** Error: user #" << to_user_id << " does not exist yet. ***\n";
 						std::cout.flush();
@@ -190,23 +352,59 @@ private:
 					else
 					{
 						std::string msg(""); // *** (sender's name) told you ***: (message)
-						msg += "*** " + users[user_id].name + " told you ***: ";
+						msg += std::string("*** ") + users[user_id].name + " told you ***: ";
 						for(int i=2; i<cmd.argv.size(); i++)
 							msg += cmd.argv[i];
 						tell(to_user_id, msg+"\n");
 					}
-					//
 				}
 				return false;
 			}
 			else if(cmd.argv[0] == "exit")
-			{
+			{//*** User '(name)' left. ***
+				auto my_name = users[user_id].name;
 				is_exit = true;
-				users.erase(user_id);
+				//users.erase(user_id);
+				remove(users, user_id);
 				close(socket_fd);
+				
+				//std::vector<std::pair<int, int>> tmp_pairs;
+				// close fifo, 1 > 2, 3 > 1
+				
+				for(int i=0; i<FIFO_LEN; i++)
+				//for(auto& fifo : chart_fifo)
+				{
+					auto &fifo = chart_fifo[i];
+					if(fifo.state == 0)
+						continue;
+					//if(fifo.first.first == user_id || fifo.first.second == user_id)
+					if(fifo.from_user == user_id || fifo.to_user == user_id)
+					{
+						close(fifo.read_fd);
+						close(fifo.write_fd);
+						//close(fifo.second.first);
+						//close(fifo.second.second);
+						std::string fifo_name;
+						//fifo_name += "fifo_" + std::to_string(fifo.first.first) + "_" + std::to_string(fifo.first.second);
+						fifo_name += "fifo_" + std::to_string(fifo.from_user) + "_" + std::to_string(fifo.to_user);
+						console::debug(fifo_name);
+						unlink(fifo_name.c_str());
+						fifo.state = 0;
+						//tmp_pairs.push_back(fifo.first);
+						
+					}
+				}
+				//for(auto &tmp_pair : tmp_pairs)
+				//	chart_fifo.erase(tmp_pair);
+				
+				std::string msg;
+				msg += std::string("*** User '(")+ my_name +")' left. ***\n";
+				yell(msg);
+				
 				return false;
 				//exit(0);
 			}
+			
 			std::string filename = test_filename(cmd.argv[0]);
 			if( filename == "" || cmd.argv[0].size() == 0)
 			{
@@ -228,19 +426,22 @@ private:
 	bool exam_fifo_to_user(command &cmd)
 	{
 		// check fifo user exist
-		if(cmd.user_out != 0 && users.find(cmd.user_out) == users.end())
+		if(cmd.user_out != 0 && find(users, cmd.user_out) == -1)
+		//if(cmd.user_out != 0 && users.find(cmd.user_out) == users.end())
 		{//*** Error: user #1 does not exist yet. ***
 			std::cout << "*** Error: user #" << cmd.user_out << " does not exist yet. ***\n";
 			std::cout.flush();
 			return false;
 		}
-		if(cmd.user_out != 0 && chart_fifo.find({user_id, cmd.user_out}) != chart_fifo.end())
+		//if(cmd.user_out != 0 && chart_fifo.find({user_id, cmd.user_out}) != chart_fifo.end())
+		if(cmd.user_out != 0 && find(chart_fifo, user_id, cmd.user_out) != -1)
 		{//*** Error: the pipe #2->#1 already exists. ***
 			std::cout << "*** Error: the pipe #" << user_id << "->#" << cmd.user_out << " does not exist yet. ***\n";
 			std::cout.flush();
 			return false;
 		}
-		if(cmd.user_in != 0 && chart_fifo.find({cmd.user_in, user_id}) == chart_fifo.end())
+		//if(cmd.user_in != 0 && chart_fifo.find({cmd.user_in, user_id}) == chart_fifo.end())
+		if(cmd.user_in != 0 && find(chart_fifo, cmd.user_in, user_id) == -1)
 		{//*** Error: the pipe #3->#1 does not exist yet. ***
 			std::cout << "*** Error: the pipe #" << cmd.user_in << "->#" << user_id << " does not exist yet. ***\n";
 			std::cout.flush();
@@ -253,62 +454,120 @@ private:
 		if(cmd.user_out != 0)
 		{//*** IamUser (#3) just piped 'cat test.html | cat >1' to Iam1 (#1) ***
 			std::string tmp = "";
-			tmp += "*** "+users[user_id].name+" (#"+std::to_string(user_id)+") just piped '' to "+users[cmd.user_out].name+" (#"+std::to_string(cmd.user_out)+") ***\n";
+			tmp += std::string("*** ") + users[user_id].name+" (#"+std::to_string(user_id)+") just piped '' to "+users[cmd.user_out].name+" (#"+std::to_string(cmd.user_out)+") ***\n";
 			yell(tmp);
 		}
 		if(cmd.user_in != 0)
 		{//*** IamUser (#3) just received from student7 (#7) by 'cat <7' ***
 			std::string tmp = "";
-			tmp += "*** "+users[user_id].name+" (#"+std::to_string(user_id)+") just received from "+users[cmd.user_in].name+" (#"+std::to_string(cmd.user_in)+") by '' ***\n";
+			tmp += std::string("*** ")+users[user_id].name+" (#"+std::to_string(user_id)+") just received from "+users[cmd.user_in].name+" (#"+std::to_string(cmd.user_in)+") by '' ***\n";
 			yell(tmp);
 		}
 	}
 	void yell(const std::string &msg)
 	{
-		for(auto &u_pair : users)
-		{
-			auto &u_user_id = u_pair.first;
-			auto &u_user = u_pair.second;
-			std::cout.flush();
-			update_fd(u_user.socket_fd);
-			std::cout << msg ;
-			//std::cerr << "yell" << u_user_id << " " << user_id << std::endl;
-			if( u_user_id != user_id)
-				print_success();
-			std::cout.flush();
-		}
-		update_fd();
+		strncpy(p_shared->broadcast, msg.c_str(), MSG_LEN);
+		p_shared->broadcast_user = user_id;
+		
+		kill(users[user_id].pid, SIGUSR1);
+		
+		//for(int i = 1; i<USER_LEN; ++i)
+		//{
+		//	int u_user_id = i;
+		//	auto &u_user = users[u_user_id];
+		//	if(u_user.state == 0)
+		//		continue;
+		//	//console::debug("Kill SIGUSR1 One");
+		//	//kill(u_user.pid, SIGUSR1);
+		//	//break;
+		//}
+		
+		//for(int i = 1; i<USER_LEN; ++i)
+		//{
+		//	int u_user_id = i;
+		//	auto &u_user = users[u_user_id];
+		//	if(u_user.state == 0)
+		//		continue;
+		//	std::cout.flush();
+		//	update_fd(u_user.socket_fd);
+		//	std::cout << msg ;
+		//	if( u_user_id != user_id)
+		//		print_success();
+		//	std::cout.flush();
+		//}
+		//update_fd();
 	}
 	void tell(int to_user_id, const std::string &msg)
 	{
-		int to_fd = users[to_user_id].socket_fd;
-		console::debug(std::string("tell to ")+std::to_string(to_user_id)+" "+msg);
-		update_fd(to_fd);
-		std::cout << msg ;
-		if( to_user_id != user_id)
-			print_success();
-		std::cout.flush();
-		update_fd(socket_fd);
+		int msg_id = get_msg_new_id();
+		
+		strncpy(p_shared->msgs[msg_id].msg, msg.c_str(), MSG_LEN);
+		p_shared->msgs[msg_id].state = 1;
+		p_shared->msgs[msg_id].from_user = user_id;
+		p_shared->msgs[msg_id].to_user = to_user_id;
+		
+		kill(users[user_id].pid, SIGUSR2);
+		//strncpy(p_shared->broadcast, msg.c_str(), MSG_LEN);
+		//p_shared->broadcast_user = user_id;
+		
+		//int to_fd = users[to_user_id].socket_fd;
+		//console::debug(std::string("tell to ")+std::to_string(to_user_id)+" "+msg);
+		//update_fd(to_fd);
+		//std::cout << msg ;
+		//if( to_user_id != user_id)
+		//	print_success();
+		//std::cout.flush();
+		//update_fd(socket_fd);
 	}
 	int get_user_new_id()
 	{
 		int tmp = 1;
-		for(auto &u_pair : users)
+		
+		for(int i = 1; i < USER_LEN; ++i)
+		//for(auto &u_pair : users)
 		{
-			auto &u_user_id = u_pair.first;
-			if(u_user_id == tmp)
-				tmp++;
-			else
-				break;
+			int u_user_id = i;
+			auto &u_user = users[u_user_id];
+			if(u_user.state == 0)
+				return u_user_id;
+			
+			//auto &u_user_id = u_pair.first;
+			//if(u_user_id == tmp)
+			//	tmp++;
+			//else
+			//	break;
 		}
 		return tmp;
 	}
+	int get_chart_fifo_new_id()
+	{
+		for(int i = 0; i < FIFO_LEN; ++i)
+		{
+			if(chart_fifo[i].state == 0)
+				return i;
+		}
+		return -1;
+	}
+	int get_msg_new_id()
+	{
+		for(int i = 0; i < MSG_NUM; ++i)
+		{
+			if(p_shared->msgs[i].state == 0)
+				return i;
+		}
+		return -1;
+	}
 	bool is_exist_name(const std::string name)
 	{
-		for(auto &u_pair : users)
+		for(int i = 1; i<USER_LEN; ++i)
+		//for(auto &u_pair : users)
 		{
-			auto &u_user = u_pair.second;
-			if(u_user.name == name)
+			int u_user_id = i;
+			auto &u_user = users[u_user_id];
+			if(u_user.state == 0)
+				continue;
+			//auto &u_user = u_pair.second;
+			if(name == u_user.name)
 				return true;
 		}
 		return false;
@@ -318,7 +577,8 @@ private:
 		if(!is_exist_name(name))
 		{
 			console::debug("change name success");
-			users[user_id].name = name;
+			//users[user_id].name = name;
+			strcpy(users[user_id].name, name.c_str());
 			return true;
 		}
 		else
@@ -331,10 +591,17 @@ private:
 	void who()
 	{
 		std::cout << "<ID>	<nickname>	<IP/port>	<indicate me>\n";
-		for(auto &u_pair : users)
+		//for(auto &u_pair : users)
+		for(int i = 1; i<USER_LEN; ++i)
+		//for(auto &u_pair : users)
 		{
-			auto &u_user_id = u_pair.first;
-			auto &u_user = u_pair.second;
+			int u_user_id = i;
+			auto &u_user = users[u_user_id];
+			if(u_user.state == 0)
+				continue;
+			std::cerr << "who " << u_user_id << " exist" << std::endl;
+			//auto &u_user_id = u_pair.first;
+			//auto &u_user = u_pair.second;
 			std::cout << u_user_id << "\t" << u_user.name << "\t" << u_user.ip << "/" << u_user.port;
 			if(u_user_id == user_id)
 				std::cout << "\t<-me" << "\n";
@@ -392,7 +659,15 @@ private:
 				console::error("Can't open fifo 0");
 			if( (fifo_1 = open( fifo_name.c_str(), O_WRONLY )) < 0)
 				console::error("Can't open fifo 1");
-			chart_fifo[{user_id, cmd.user_out}] = {fifo_0, fifo_1};
+				
+			int chart_fifo_new_id = get_chart_fifo_new_id();
+			chart_fifo[chart_fifo_new_id].state = 1;
+			chart_fifo[chart_fifo_new_id].from_user = user_id;
+			chart_fifo[chart_fifo_new_id].to_user = cmd.user_out;
+			chart_fifo[chart_fifo_new_id].read_fd = fifo_0;
+			chart_fifo[chart_fifo_new_id].write_fd = fifo_1;
+			
+			//chart_fifo[{user_id, cmd.user_out}] = {fifo_0, fifo_1};
 			std::cerr << "B" << fifo_0 << " " << fifo_1 << std::endl;
 			//std::cerr << "aa" << fifo << chart_fifo[{user_id, cmd.user_out}] << std::endl;
 			//close(1);
@@ -401,47 +676,67 @@ private:
 			//close(fifo);
 		}
 		if(cmd.user_in != 0)
-		{}
+		{
+			std::cerr << "A" << cmd.user_in << " " << user_id << std::endl;
+			std::string fifo_name;
+			fifo_name += "fifo_" + std::to_string(cmd.user_in) + "_" + std::to_string(user_id);
+			
+			console::debug(fifo_name+"in");
+			int fifo_0, fifo_1;
+			
+			if( (fifo_0 = open( fifo_name.c_str(), O_RDONLY )) < 0)
+				console::error("Can't open fifo 0");
+			
+			int chart_fifo_id = find(chart_fifo, cmd.user_in, user_id);
+			
+			std::cerr << "outfork read fd " << fifo_0 <<" chart_fifo_id "<< chart_fifo_id << std::endl;
+			std::cerr << "user_in " << fifo_0 << socket_fd << std::endl;
+			
+			chart_fifo[chart_fifo_id].read_fd = fifo_0;
+			chart_fifo[chart_fifo_id].state = 2;
+			
+			kill(users[user_id].pid, SIGUSR2);
+			// echo in to close fifo write
+			
+			
+			
+		}
 	}
 	void fifo_handler(std::vector<command> &cmds, int pipe_i)
 	{ // in fork
 		auto &cmd = cmds[pipe_i];
 		if(cmd.user_out != 0)
 		{
-			auto fifo = chart_fifo[{user_id, cmd.user_out}];
+			int i = find(chart_fifo, user_id, cmd.user_out);
+			auto &fifo = chart_fifo[i];
+			//auto fifo = chart_fifo[{user_id, cmd.user_out}];
 			
 			
 			//std::cerr << "aa" << fifo << chart_fifo[{user_id, cmd.user_out}] << std::endl;
 			close(1);
-			dup(fifo.second);
-			//close(0);
-			//shutdown(1, SHUT_RD);
-			//close(fifo);
-			close(fifo.first);
-			close(fifo.second);
+			dup(fifo.write_fd);
+			close(fifo.read_fd);
+			close(fifo.write_fd);
+			//dup(fifo.second);
+			//close(fifo.first);
+			//close(fifo.second);
 		}
 		if(cmd.user_in != 0)
 		{
-			//std::cerr << "aaaa3" << cmd.user_in << " " <<  user_id << chart_fifo.size()<< std::endl;
-			auto fifo = chart_fifo[{cmd.user_in, user_id}];
-			//std::string fifo_name;
-			//fifo_name += "fifo_" + std::to_string(cmd.user_in) + "_" + std::to_string(user_id);
-			//console::debug(fifo_name);
-			//int fifo;
-			//if( (fifo = open( fifo_name.c_str(), O_RDWR )) < 0)
-			//	console::error("Can't open fifo");
-			
+			int i = find(chart_fifo, cmd.user_in, user_id);
+			auto &fifo = chart_fifo[i];
+			//auto fifo = chart_fifo[{cmd.user_in, user_id}];			
 			//console::debug(fifo_name);
 			close(0);
-			dup(fifo.first);
-			//shutdown(1, SHUT_WR);
-			//shutdown(fifo);
-			std::cerr << fifo.first << fifo.second << std::endl;
-			//close(fifo);
-			close(fifo.first);
-			close(fifo.second);
-			//chart_fifo.erase({cmd.user_out, user_id});
+			std::cerr << "infork read fd " << fifo.read_fd << "chart id" << i << std::endl;
+			dup(fifo.read_fd);
+			close(fifo.read_fd);
+			close(fifo.write_fd);
 			
+			fifo.state = 0;
+			//dup(fifo.first);
+			//close(fifo.first);
+			//close(fifo.second);
 		}
 	}
 	void pipe_tofile(std::vector<command> &cmds, int pipe_i)
@@ -523,23 +818,54 @@ private:
 			console::debug("run_command_impl");
 			run_command_impl(cmds, pipe_i);	 // fork
 			
-			// close fifo, the user receive msg, than close fifo
-			if(chart_fifo.find({cmd.user_in, user_id}) != chart_fifo.end() )
+			
+			if(find(chart_fifo, user_id, cmd.user_out) != -1)
+			//if(chart_fifo.find({cmd.user_in, user_id}) != chart_fifo.end() )
 			{
-				console::debug("Close fifo of master");
-				//close(1);
-				auto fifo = chart_fifo[{cmd.user_in, user_id}];
-				//close(fifo);
-				close(fifo.first);
-				close(fifo.second);
-				//close(7); close(6);
-				//std::cout << "close " << chart_fifo[{cmd.user_in, user_id}] << std::endl;
+				console::debug("Close fifo of master out");
+				
+				int i = find(chart_fifo, user_id, cmd.user_out);
+				auto &fifo = chart_fifo[i];
+				
+				//auto fifo = chart_fifo[{cmd.user_in, user_id}];
+				//close(fifo.read_fd);
+				//close(fifo.write_fd);
+				//close(fifo.first);
+				//close(fifo.second);
+				
+				
+				std::string fifo_name;
+				fifo_name += "fifo_" + std::to_string(user_id) + "_" + std::to_string(cmd.user_out);
+				console::debug(fifo_name);
+				//unlink(fifo_name.c_str());
+				//chart_fifo.erase({cmd.user_in, user_id});
+				//fifo.state = 0;
+			}
+			
+			
+			
+			// close fifo, the user receive msg, than close fifo
+			if(find(chart_fifo, cmd.user_in, user_id) != -1)
+			//if(chart_fifo.find({cmd.user_in, user_id}) != chart_fifo.end() )
+			{
+				console::debug("Close fifo of master in");
+				
+				int i = find(chart_fifo, cmd.user_in, user_id);
+				auto &fifo = chart_fifo[i];
+				
+				//auto fifo = chart_fifo[{cmd.user_in, user_id}];
+				close(fifo.read_fd);
+				close(fifo.write_fd);
+				//close(fifo.first);
+				//close(fifo.second);
+				
+				
 				std::string fifo_name;
 				fifo_name += "fifo_" + std::to_string(cmd.user_in) + "_" + std::to_string(user_id);
 				console::debug(fifo_name);
 				unlink(fifo_name.c_str());
-				chart_fifo.erase({cmd.user_in, user_id});
-				
+				//chart_fifo.erase({cmd.user_in, user_id});
+				//fifo.state = 0;
 			}
 			//update_fd();
 			// close pipe
@@ -558,6 +884,7 @@ private:
 	}
 	
 };
-std::map<int, user> shell::users;
-std::map<std::pair<int, int>, std::pair<int, int>> shell::chart_fifo;
+int shell::user_id;
+//std::map<int, user> shell::users;
+//std::map<std::pair<int, int>, std::pair<int, int>> shell::chart_fifo;
 #endif
