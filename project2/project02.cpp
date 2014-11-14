@@ -61,14 +61,14 @@ int main (int argc, char** argv)
 
 			if(!FD_ISSET(fd, &read_fds))
 				continue;
-			std::cerr << "active " << fd << std::endl;
+			//std::cerr << "active " << fd << std::endl;
 			if(fd == master_socket_fd)
 			{
 				console::debug("New client create");
 				int alen;
 				int new_socket = accept(master_socket_fd, (struct sockaddr *) &from_cin, (socklen_t *) &alen);
 				
-				std::cerr << "new_socket " << new_socket << std::endl;
+				//std::cerr << "new_socket " << new_socket << std::endl;
 				if(new_socket < 0)
 					console::error("Can't accept");
 				FD_SET(new_socket, &active_fds);
@@ -79,28 +79,9 @@ int main (int argc, char** argv)
 				inet_ntop( AF_INET, &(from_cin.sin_addr.s_addr), ip, INET_ADDRSTRLEN );
 				uint16_t port = from_cin.sin_port;
 				
-				shell_sets[new_socket].users[shell_sets[new_socket].user_id].ip = ip;
-				shell_sets[new_socket].users[shell_sets[new_socket].user_id].port = std::to_string(port);
-				
-				//user.port = from_cin.sin_port;
-				//std::cout << ip << "/"<< port << std::endl;
-				
-				//char hoststr[NI_MAXHOST];
-				//char portstr[NI_MAXSERV];
-				
-				//int rc = getnameinfo((struct sockaddr *)&from_cin, alen, hoststr, sizeof(hoststr), portstr, sizeof(portstr), NI_NUMERICHOST | NI_NUMERICSERV);
-				//if (rc == 0) printf("New connection from %s %s", hoststr, portstr);
-				//printf("New connection from %s %s", hoststr, portstr);
-				//shell_sets[new_socket].users[shell_sets[new_socket].user_id].ip = gg;
-				//shell_sets[new_socket].users[shell_sets[new_socket].user_id].port = from_cin.sin_port;
-				
-				//struct sockaddr_in *sin = (struct sockaddr_in *)&from_cin;
-				//unsigned char *ip = (unsigned char *)&sin->sin_addr.s_addr;
-				
-				//shell_sets[new_socket].users[shell_sets[new_socket].user_id].ip = std::to_string(ip[0]);
-				
-				//shell_sets[new_socket].users[shell_sets[new_socket].user_id].ip = inet_ntoa( ( (struct sockaddr_in)from_cin).sin_addr);
-				//shell my_sh(sockfd, sockfd, sockfd);
+				shell_sets[new_socket].update_ip_port(ip, std::to_string(port));
+				//shell_sets[new_socket].users[shell_sets[new_socket].user_id].ip = ip;
+				//shell_sets[new_socket].users[shell_sets[new_socket].user_id].port = std::to_string(port);
 				
 			}
 			else
@@ -110,12 +91,11 @@ int main (int argc, char** argv)
 				if(status == 0)
 				{
 					console::debug("Close client");
-					std::cerr << fd << std::endl;
 					shell_sets.erase(fd);
 					close(fd);
 					close(0);dup(master_socket_fd);
 					close(1);dup(master_socket_fd);
-					close(2);dup(master_socket_fd);
+					//close(2);dup(master_socket_fd);
 					FD_CLR(fd, &active_fds);
 					
 				}

@@ -5,7 +5,7 @@
 class console
 {
 public:
-	static void debug(std::string &&msg)
+	static void debug(const std::string &msg)
 	{
 		std::cerr << "===DEBUG===: " << msg << std::endl;
 	}
