@@ -149,7 +149,7 @@ public:
 			{
 				if(!FD_ISSET(fd, &read_fds))
 					continue;
-				std::cerr << "active " << fd << std::endl;
+				//std::cerr << "active " << fd << std::endl;
 				if(fd == master_socket_fd)
 				{
 					console::debug("New client create");
@@ -171,7 +171,7 @@ public:
 				else
 				{ // this fd is active
 					console::debug("Old client active");
-					std::cerr << "fd" << fd << " -> " << shell_sets[fd].socket_fd << std::endl;
+					//std::cerr << "fd" << fd << " -> " << shell_sets[fd].socket_fd << std::endl;
 					int status = shell_sets[fd].run_one_time();
 					
 					if(status == 0)

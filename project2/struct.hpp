@@ -92,7 +92,7 @@ public:
 	{
 		for(int i=start; i < len; i++)
 		{
-			std::cerr << i << std::endl;
+			//std::cerr << i << std::endl;
 			if(arr[i].state == 0)
 				return i;
 		}

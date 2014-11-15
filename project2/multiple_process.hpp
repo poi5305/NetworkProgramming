@@ -104,7 +104,7 @@ public:
 		auto &cmd = cmds[pipe_i];
 		if(cmd.user_out != 0)
 		{
-			std::cerr << "A" << user_id << " " << cmd.user_out << std::endl;
+			//std::cerr << "A" << user_id << " " << cmd.user_out << std::endl;
 			std::string fifo_name;
 			fifo_name += "fifo_" + std::to_string(user_id) + "_" + std::to_string(cmd.user_out);
 			
@@ -129,7 +129,7 @@ public:
 			chart_fifo[chart_fifo_new_id].write_fd = fifo_1;
 			
 			//chart_fifo[{user_id, cmd.user_out}] = {fifo_0, fifo_1};
-			std::cerr << "B" << fifo_0 << " " << fifo_1 << std::endl;
+			//std::cerr << "B" << fifo_0 << " " << fifo_1 << std::endl;
 			//std::cerr << "aa" << fifo << chart_fifo[{user_id, cmd.user_out}] << std::endl;
 			//close(1);
 			//dup(fifo);
@@ -138,7 +138,7 @@ public:
 		}
 		if(cmd.user_in != 0)
 		{
-			std::cerr << "A" << cmd.user_in << " " << user_id << std::endl;
+			//std::cerr << "A" << cmd.user_in << " " << user_id << std::endl;
 			std::string fifo_name;
 			fifo_name += "fifo_" + std::to_string(cmd.user_in) + "_" + std::to_string(user_id);
 			
@@ -150,8 +150,8 @@ public:
 			
 			int chart_fifo_id = struct_utility::find(chart_fifo, cmd.user_in, user_id);
 			
-			std::cerr << "outfork read fd " << fifo_0 <<" chart_fifo_id "<< chart_fifo_id << std::endl;
-			std::cerr << "user_in " << fifo_0 << socket_fd << std::endl;
+			//std::cerr << "outfork read fd " << fifo_0 <<" chart_fifo_id "<< chart_fifo_id << std::endl;
+			//std::cerr << "user_in " << fifo_0 << socket_fd << std::endl;
 			
 			chart_fifo[chart_fifo_id].read_fd = fifo_0;
 			chart_fifo[chart_fifo_id].state = 2;

@@ -26,7 +26,7 @@ public:
 		if(socket_fd < 3)
 			return;
 		//console::error("Error, update_fd can't smaller than 3");
-		std::cerr << "close 0, 1. dup " << socket_fd << std::endl;
+		//std::cerr << "close 0, 1. dup " << socket_fd << std::endl;
 		close(0);dup(socket_fd);
 		close(1);dup(socket_fd);
 		//close(2);dup(socket_fd);
@@ -36,7 +36,7 @@ public:
 		if(fd < 3)
 			return;
 		//console::error("Error, update_fd can't smaller than 3");
-		std::cerr << "close 0, 1. dup " << fd << std::endl;
+		//std::cerr << "close 0, 1. dup " << fd << std::endl;
 		close(0);dup(fd);
 		close(1);dup(fd);
 		//close(2);dup(socket_fd);
@@ -74,7 +74,7 @@ public:
 		auto &cmd = cmds[pipe_i];
 		if(cmd.user_out != 0)
 		{
-			std::cerr << "A" << user_id << " " << cmd.user_out << std::endl;
+			//std::cerr << "A" << user_id << " " << cmd.user_out << std::endl;
 			std::string fifo_name;
 			fifo_name += "fifo_" + std::to_string(user_id) + "_" + std::to_string(cmd.user_out);
 			

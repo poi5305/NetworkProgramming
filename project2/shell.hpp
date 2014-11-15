@@ -43,7 +43,7 @@ public:
 			
 		g_user_id = user_id = struct_utility::get_new_id(users, USER_LEN, 1);
 		METHOD::set_id(user_id, 0);
-		std::cerr << "user_id: " << user_id << " " << socket_fd << std::endl;
+		//std::cerr << "user_id: " << user_id << " " << socket_fd << std::endl;
 		struct_utility::active_user(user_id, socket_fd, 0, "no name", "localhost", "0");
 		
 		print_hello();
@@ -62,7 +62,7 @@ public:
 	{
 		g_user_id = user_id = struct_utility::get_new_id(users, USER_LEN, 1);
 		METHOD::set_id(user_id, socket_fd);
-		std::cerr << "user_id: " << user_id << " " << socket_fd << std::endl;
+		//std::cerr << "user_id: " << user_id << " " << socket_fd << std::endl;
 		struct_utility::active_user(user_id, socket_fd, 0, socket_name, ip, port);
 		
 		this->update_fd();
@@ -88,7 +88,7 @@ public:
 		g_user_id = user_id = struct_utility::get_new_id(users, USER_LEN, 1);
 		
 		METHOD::set_id(user_id, socket_fd);
-		std::cerr << "user_id: " << user_id << " " << socket_fd << std::endl;
+		//std::cerr << "user_id: " << user_id << " " << socket_fd << std::endl;
 		struct_utility::active_user(user_id, socket_fd, pid, socket_name, ip, port);
 		
 		print_hello();
@@ -112,7 +112,7 @@ public:
 	int run_one_time()
 	{	
 		console::debug("run_one_time start");
-		std::cerr << socket_fd << " " <<METHOD::socket_fd << std::endl;
+		//std::cerr << socket_fd << " " <<METHOD::socket_fd << std::endl;
 		this->update_fd();
 		std::vector<command> pipes = cmd_parser.parse_line();
 		debug_cmd(pipes);
@@ -302,7 +302,7 @@ private:
 		//if(cmd.user_out != 0 && chart_fifo.find({user_id, cmd.user_out}) != chart_fifo.end())
 		if(cmd.user_out != 0 && struct_utility::find(chart_fifo, user_id, cmd.user_out) != -1)
 		{//*** Error: the pipe #2->#1 already exists. ***
-			std::cout << "*** Error: the pipe #" << user_id << "->#" << cmd.user_out << " does not exist yet. ***\n";
+			std::cout << "*** Error: the pipe #" << user_id << "->#" << cmd.user_out << " already exists. ***\n";
 			std::cout.flush();
 			return false;
 		}
@@ -373,9 +373,7 @@ private:
 			auto &u_user = users[u_user_id];
 			if(u_user.state == 0)
 				continue;
-			std::cerr << "who " << u_user_id << " exist" << std::endl;
-			//auto &u_user_id = u_pair.first;
-			//auto &u_user = u_pair.second;
+			//std::cerr << "who " << u_user_id << " exist" << std::endl;
 			std::cout << u_user_id << "\t" << u_user.name << "\t" << u_user.ip << "/" << u_user.port;
 			if(u_user_id == user_id)
 				std::cout << "\t<-me" << "\n";
@@ -431,7 +429,7 @@ private:
 			int i = struct_utility::find(chart_fifo, cmd.user_in, user_id);
 			auto &fifo = chart_fifo[i];
 			close(0);
-			std::cerr << "infork read fd " << fifo.read_fd << "chart id" << i << std::endl;
+			//std::cerr << "infork read fd " << fifo.read_fd << "chart id" << i << std::endl;
 			dup(fifo.read_fd);
 			close(fifo.read_fd);
 			close(fifo.write_fd);
