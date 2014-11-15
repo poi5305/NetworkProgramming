@@ -68,6 +68,129 @@ public:
 	}
 	
 	
+	static void multiple_process_server(std::string service, std::function<void(int)> server_function)
+	{
+		std::cerr << "multiple process server" << std::endl;
+		int master_socket_fd = server::passivsock(service);
+		if(master_socket_fd == -1)
+			master_socket_fd = server::passivsock(std::to_string(atoi( service.c_str() )+1));
+			
+		int newsockfd, clilen, child_pid;
+		struct sockaddr_in client_addr;
+		
+		std::vector<int> child_pids(0);
+		
+		for(int i=0; ;i++)
+		{
+			newsockfd = accept(master_socket_fd, (struct sockaddr *) &client_addr, (socklen_t *) &clilen);
+			//std::cout << client_addr.sin_addr.s_addr << std::endl;
+			if (newsockfd < 0)
+				console::error("Error, can't accept");
+			if ( (child_pid = fork()) < 0  )
+				console::error("Error, can't fork");
+			else if (child_pid == 0)
+			{// child procress
+				console::debug("New client create");
+				close(master_socket_fd);
+				signal(SIGCHLD, [](int k){});
+				
+				char ip[INET_ADDRSTRLEN];
+				inet_ntop( AF_INET, &(client_addr.sin_addr.s_addr), ip, INET_ADDRSTRLEN );
+				uint16_t port = client_addr.sin_port;
+				//int sockfd, int pid, std::string sockname, std::string ip, std::string port
+				shell<multiple_process> my_sh(newsockfd, child_pid, "no name", ip, std::to_string(port));
+				
+				exit(0);
+			}
+			else
+			{// parent procress
+				child_pids.push_back(child_pid);
+			}
+			close(newsockfd);
+		}
+		close(master_socket_fd);
+	}
+	
+	static void single_process_server(std::string service, std::function<void(int)> server_function)
+	{
+		std::cerr << "single process server" << std::endl;
+		int master_socket_fd = server::passivsock(service);
+		if(master_socket_fd == -1)
+			master_socket_fd = server::passivsock(std::to_string(atoi( service.c_str() )+1));
+		
+		int newsockfd, clilen, child_pid;
+		struct sockaddr_in client_addr;
+		
+		fd_set read_fds; /* read file descriptor set */
+		fd_set active_fds; /* active file descriptor set */
+		int number_fds;
+		
+		number_fds = getdtablesize();
+		if(number_fds > 64)
+			number_fds = 64;
+		
+		FD_ZERO(&active_fds);
+		FD_SET(master_socket_fd, &active_fds);
+	
+		std::map<int, shell<single_process>> shell_sets;
+	
+		while(1)
+		{		
+			memcpy(&read_fds, &active_fds, sizeof(read_fds)); /* copy active to read */
+			int state = select(number_fds, &read_fds, (fd_set *)0, (fd_set *)0, (struct timeval *)0 );	
+			if(state < 0)
+			{
+				printf("Error %s\n", strerror(errno));
+				//std::cerr << errno << " "<<EBADF << " " << EFAULT <<std::endl;
+				console::error("Select Error");
+			}
+				
+			for(int fd(0); fd < number_fds; ++fd)
+			{
+				if(!FD_ISSET(fd, &read_fds))
+					continue;
+				std::cerr << "active " << fd << std::endl;
+				if(fd == master_socket_fd)
+				{
+					console::debug("New client create");
+					int clilen;
+					int new_socket = accept(master_socket_fd, (struct sockaddr *) &client_addr, (socklen_t *) &clilen);
+					
+					//std::cerr << "new_socket " << new_socket << std::endl;
+					if(new_socket < 0)
+						console::error("Can't accept");
+					FD_SET(new_socket, &active_fds);
+					
+					char ip[INET_ADDRSTRLEN];
+					inet_ntop( AF_INET, &(client_addr.sin_addr.s_addr), ip, INET_ADDRSTRLEN );
+					uint16_t port = client_addr.sin_port;
+					
+					shell_sets.insert({new_socket, shell<single_process>(new_socket, "no name", ip, std::to_string(port)) });
+					
+				}
+				else
+				{ // this fd is active
+					console::debug("Old client active");
+					std::cerr << "fd" << fd << " -> " << shell_sets[fd].socket_fd << std::endl;
+					int status = shell_sets[fd].run_one_time();
+					
+					if(status == 0)
+					{
+						console::debug("Close client");
+						shell_sets.erase(fd);
+						close(fd);
+						close(0);dup(master_socket_fd);
+						close(1);dup(master_socket_fd);
+						//close(2);dup(master_socket_fd);
+						FD_CLR(fd, &active_fds);
+						
+					}
+				}
+			}
+		}
+	}
+	
+	
 	static int passivsock(std::string service, std::string protocol = "tcp")
 	{
 		struct servent *p_server_info;
