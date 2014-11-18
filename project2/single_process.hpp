@@ -91,7 +91,7 @@ public:
 				console::error("Can't open fifo 1");
 				
 			//int chart_fifo_new_id = get_chart_fifo_new_id();
-			int chart_fifo_new_id = struct_utility::get_new_id(p_shared->chart_fifo, FIFO_LEN);
+			int chart_fifo_new_id = struct_utility::get_new_id(chart_fifo, FIFO_LEN);
 			chart_fifo[chart_fifo_new_id].state = 1;
 			chart_fifo[chart_fifo_new_id].from_user = user_id;
 			chart_fifo[chart_fifo_new_id].to_user = cmd.user_out;

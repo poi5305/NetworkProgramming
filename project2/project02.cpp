@@ -20,15 +20,9 @@
 #include <map>
 //#include <boost/algorithm/string.hpp>
 #include "console.hpp"
-
-#define SHMKEY ((key_t) 5567)
-#define PERMS 0666
-int shmid, clisem, servsem;
+#include "struct.hpp"
 
 #include "server.hpp"
-
-
-
 
 int main (int argc, char** argv)
 {
@@ -36,15 +30,7 @@ int main (int argc, char** argv)
 	signal(SIGUSR2, [](int k){});
 	signal(SIGCHLD, SIG_IGN); // signal(SIGCHLD, childhandler);
 	
-	// shm set
-	std::cout << "shared size " << sizeof(shared) << std::endl;
-	if ((shmid = shmget(SHMKEY, sizeof(shared), PERMS|IPC_CREAT))<0)
-		console::error("server: can't get shared memory");
-	
-	if ( (p_shared = (shared *)shmat(shmid, (char *) 0, 0)) == 0)
-		console::error("...");
-	
-	memset((void*) p_shared, 0, sizeof(shared));
+	struct_utility::shm_init();
 	
 	users = p_shared->users;
 	chart_fifo = p_shared->chart_fifo;

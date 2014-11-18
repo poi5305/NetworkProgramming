@@ -26,6 +26,7 @@ public:
 	static int g_user_id;
 	int user_id;
 	int socket_fd;
+	std::string line;
 	//static std::map<int, user> users;
 	//static std::map<std::pair<int, int>, std::pair<int, int>> chart_fifo; // userid, userid, ??
 	shell()
@@ -50,6 +51,7 @@ public:
 		while(true)
 		{
 			std::vector<command> pipes = cmd_parser.parse_line();
+			line = cmd_parser.line;
 			if(exam_command(pipes))
 				run_command(pipes);
 			print_success();
@@ -84,11 +86,12 @@ public:
 		close(1);dup(sockfd);
 		//close(2);dup(sockfd);
 		//close(sockfd);
+		pid = getpid();
 		
 		g_user_id = user_id = struct_utility::get_new_id(users, USER_LEN, 1);
 		
 		METHOD::set_id(user_id, socket_fd);
-		//std::cerr << "user_id: " << user_id << " " << socket_fd << std::endl;
+		//std::cerr << "user_id: " << user_id << " " << socket_fd << " pid " << pid << std::endl;
 		struct_utility::active_user(user_id, socket_fd, pid, socket_name, ip, port);
 		
 		print_hello();
@@ -102,6 +105,7 @@ public:
 		while(true)
 		{
 			std::vector<command> pipes = cmd_parser.parse_line();
+			line = cmd_parser.line;
 			debug_cmd(pipes);
 			if(exam_command(pipes))
 				run_command(pipes);
@@ -115,6 +119,7 @@ public:
 		//std::cerr << socket_fd << " " <<METHOD::socket_fd << std::endl;
 		this->update_fd();
 		std::vector<command> pipes = cmd_parser.parse_line();
+		line = cmd_parser.line;
 		debug_cmd(pipes);
 		if(exam_command(pipes))
 			run_command(pipes);
@@ -141,20 +146,20 @@ private:
 		int i = 0;
 		for(auto &pipe : pipes)
 		{
-			std::cerr << "===DEBUG CMDS PARA=== (" << i << "): ";
-			std::cerr << "pipe_num: " << pipe.pipe_num << "; ";
-			std::cerr << "command_idx: " << pipe.command_idx << "; ";
-			std::cerr << "is_end: " << pipe.is_end << "; ";
-			std::cerr << "file1: " << pipe.file1 << "; ";
-			std::cerr << "file2: " << pipe.file2 << "; ";
-			std::cerr << "user_out: " << pipe.user_out << "; ";
-			std::cerr << "user_in: " << pipe.user_in << "; ";
-			std::cerr << "\n";
-			std::cerr << "===DEBUG CMDS ARGV=== (" << i << "): ";
-			for(auto &para : pipe.argv)
-				std::cerr << para << " ";
-			std::cerr << "\n";
-			std::cerr << "===================== (" << i << ")\n";
+			//std::cerr << "===DEBUG CMDS PARA=== (" << i << "): ";
+			//std::cerr << "pipe_num: " << pipe.pipe_num << "; ";
+			//std::cerr << "command_idx: " << pipe.command_idx << "; ";
+			//std::cerr << "is_end: " << pipe.is_end << "; ";
+			//std::cerr << "file1: " << pipe.file1 << "; ";
+			//std::cerr << "file2: " << pipe.file2 << "; ";
+			//std::cerr << "user_out: " << pipe.user_out << "; ";
+			//std::cerr << "user_in: " << pipe.user_in << "; ";
+			//std::cerr << "\n";
+			//std::cerr << "===DEBUG CMDS ARGV=== (" << i << "): ";
+			//for(auto &para : pipe.argv)
+			//	std::cerr << para << " ";
+			//std::cerr << "\n";
+			//std::cerr << "===================== (" << i << ")\n";
 			i++;
 		}
 	}
@@ -195,9 +200,11 @@ private:
 				if(cmd.argv.size() > 1 && cmd.argv[1] != "")
 				{
 					std::string msg("");
-					msg += std::string("*** ") + users[user_id].name + " this->yelled ***: ";//*** (sender's name) this->yelled ***: (message)
-					for(int i=1; i<cmd.argv.size(); i++)
-						msg += cmd.argv[i];
+					msg += std::string("*** ") + users[user_id].name + " yelled ***: ";//*** (sender's name) this->yelled ***: (message)
+					msg += line2words(line, 2, 1);
+					//msg += cmd.argv[1];
+					//for(int i=2; i<cmd.argv.size(); i++)
+					//	msg += " " + cmd.argv[i];
 					this->yell( msg+"\n" );
 				}
 				return false;
@@ -219,8 +226,10 @@ private:
 					{
 						std::string msg(""); // *** (sender's name) told you ***: (message)
 						msg += std::string("*** ") + users[user_id].name + " told you ***: ";
-						for(int i=2; i<cmd.argv.size(); i++)
-							msg += cmd.argv[i];
+						msg += line2words(line, 3, 2);
+						//msg += cmd.argv[2];
+						//for(int i=3; i<cmd.argv.size(); i++)
+						//	msg += " " + cmd.argv[i];
 						this->tell(to_user_id, msg+"\n");
 					}
 				}
@@ -233,9 +242,8 @@ private:
 				//users.erase(user_id);
 				struct_utility::remove(users, user_id);
 				close(socket_fd);
-				
-				//std::vector<std::pair<int, int>> tmp_pairs;
-				// close fifo, 1 > 2, 3 > 1
+				close(0);
+				close(1);
 				
 				for(int i=0; i<FIFO_LEN; i++)
 				{
@@ -259,9 +267,6 @@ private:
 						
 					}
 				}
-				//for(auto &tmp_pair : tmp_pairs)
-				//	chart_fifo.erase(tmp_pair);
-				
 				std::string msg;
 				msg += std::string("*** User '(")+ my_name +")' left. ***\n";
 				this->yell(msg);
@@ -320,17 +325,40 @@ private:
 		if(cmd.user_out != 0)
 		{//*** IamUser (#3) just piped 'cat test.html | cat >1' to Iam1 (#1) ***
 			std::string tmp = "";
-			tmp += std::string("*** ") + users[user_id].name+" (#"+std::to_string(user_id)+") just piped '' to "+users[cmd.user_out].name+" (#"+std::to_string(cmd.user_out)+") ***\n";
+			tmp += std::string("*** ") + users[user_id].name+" (#"+std::to_string(user_id)+") just piped '"+line+"' to "+users[cmd.user_out].name+" (#"+std::to_string(cmd.user_out)+") ***\n";
 			this->yell(tmp);
 		}
 		if(cmd.user_in != 0)
 		{//*** IamUser (#3) just received from student7 (#7) by 'cat <7' ***
 			std::string tmp = "";
-			tmp += std::string("*** ")+users[user_id].name+" (#"+std::to_string(user_id)+") just received from "+users[cmd.user_in].name+" (#"+std::to_string(cmd.user_in)+") by '' ***\n";
+			tmp += std::string("*** ")+users[user_id].name+" (#"+std::to_string(user_id)+") just received from "+users[cmd.user_in].name+" (#"+std::to_string(cmd.user_in)+") by '"+line+"' ***\n";
 			this->yell(tmp);
 		}
 	}
-
+	std::string line2words(const std::string &line, int limit_w, int limit_s)
+	{
+		std::string words;
+		int state = 0;
+		int w = 0, s = 0, idx = 0;
+		
+		for(int i=0; i<line.size(); i++)
+		{
+			if(line[i] != ' ' && state == 0)
+			{
+				w++;
+				state = 1;
+			}
+			else if(line[i] == ' ' && state == 1)
+			{
+				s++;
+				state = 0;
+			}
+			idx = i;
+			if(w == limit_w && s == limit_s)
+				break;
+		}
+		return line.substr(idx);
+	}
 	bool is_exist_name(const std::string name)
 	{
 		for(int i = 1; i<USER_LEN; ++i)

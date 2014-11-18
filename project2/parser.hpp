@@ -37,12 +37,20 @@ public:
 			char c = std::cin.get();
 			if(!std::cin.good() || std::cin.eof())
 				exit(0);	
-			line.push_back(c);
 			
-			if(c == '"')
-				std::getline(std::cin, argv, '"');
-			else if(c == '\'')
-				std::getline(std::cin, argv, '\'');
+			if(c != '\n' && c != '\r') 
+				line.push_back(c);
+			
+			//if(c == '"')
+			//{
+			//	std::getline(std::cin, argv, '"');
+			//	line += argv;
+			//}	
+			//else if(c == '\'')
+			//{
+			//	std::getline(std::cin, argv, '\'');
+			//	line += argv;
+			//}
 			
 			if(c == ' ' || c == '|' || c == '\n')
 			{
@@ -76,6 +84,7 @@ public:
 				if(pipe_num == 0)
 					pipe_num = 1;
 				pipes.push_back({pipe_num, 0, false, argvs, file1, file2, user_out, user_in});
+				line += argv;
 				argv = ""; file1 = ""; file2 = ""; user_out = 0; user_in = 0;
 				argvs.resize(0);				
 				pipe_num = 1;
@@ -92,6 +101,7 @@ public:
 					else
 						file_num = num;
 				}
+				line += argv;
 				argv = "";
 				int tag = parse_next_word(argv);
 				if( tag == 0)
@@ -125,6 +135,7 @@ public:
 					else
 						file_num = num;
 				}
+				line += argv;
 				argv = "";
 				int tag = parse_next_word(argv);
 				if( tag == 0)
@@ -159,7 +170,8 @@ private:
 		while(std::cin.peek() == ' ')
 		{
 			tag = 1;
-			std::cin.get();
+			char c = std::cin.get();
+			line.push_back(c);
 		}
 		while(true)
 		{
@@ -169,6 +181,7 @@ private:
 			else
 				argv.push_back(std::cin.get());
 		}
+		line += argv;
 		if(argv.size() == 0)
 			tag = 0;
 		return tag;

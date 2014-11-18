@@ -77,6 +77,7 @@ public:
 			
 		int newsockfd, clilen, child_pid;
 		struct sockaddr_in client_addr;
+		memset((void*) &client_addr, 0, sizeof(sockaddr_in));
 		
 		std::vector<int> child_pids(0);
 		
@@ -105,6 +106,7 @@ public:
 			else
 			{// parent procress
 				child_pids.push_back(child_pid);
+				
 			}
 			close(newsockfd);
 		}
@@ -120,6 +122,7 @@ public:
 		
 		int newsockfd, clilen, child_pid;
 		struct sockaddr_in client_addr;
+		memset((void*) &client_addr, 0, sizeof(sockaddr_in));
 		
 		fd_set read_fds; /* read file descriptor set */
 		fd_set active_fds; /* active file descriptor set */
@@ -164,7 +167,6 @@ public:
 					char ip[INET_ADDRSTRLEN];
 					inet_ntop( AF_INET, &(client_addr.sin_addr.s_addr), ip, INET_ADDRSTRLEN );
 					uint16_t port = client_addr.sin_port;
-					
 					shell_sets.insert({new_socket, shell<single_process>(new_socket, "no name", ip, std::to_string(port)) });
 					
 				}

@@ -62,22 +62,10 @@ public:
 	{
 		strncpy(p_shared->broadcast, msg.c_str(), MSG_LEN);
 		p_shared->broadcast_user = user_id;
-		kill(users[user_id].pid, SIGUSR1);
+		console::debug("kill yell "+std::to_string(users[user_id].pid));
+		//kill(users[user_id].pid, SIGUSR1);
+		kill(0, SIGUSR1);
 		
-		//for(int i = 1; i<USER_LEN; ++i)
-		//{
-		//	int u_user_id = i;
-		//	auto &u_user = users[u_user_id];
-		//	if(u_user.state == 0)
-		//		continue;
-		//	std::cout.flush();
-		//	update_fd(u_user.socket_fd);
-		//	std::cout << msg ;
-		//	if( u_user_id != user_id)
-		//		print_success();
-		//	std::cout.flush();
-		//}
-		//update_fd();
 	}
 	void tell(int to_user_id, const std::string &msg)
 	{
@@ -88,16 +76,8 @@ public:
 		p_shared->msgs[msg_id].from_user = user_id;
 		p_shared->msgs[msg_id].to_user = to_user_id;
 		
-		kill(users[user_id].pid, SIGUSR2);
-		
-		//int to_fd = users[to_user_id].socket_fd;
-		//console::debug(std::string("tell to ")+std::to_string(to_user_id)+" "+msg);
-		//update_fd(to_fd);
-		//std::cout << msg ;
-		//if( to_user_id != user_id)
-		//	print_success();
-		//std::cout.flush();
-		//update_fd(socket_fd);
+		//kill(users[user_id].pid, SIGUSR2);
+		kill(users[to_user_id].pid, SIGUSR2);
 	}
 	void create_fifo(std::vector<command> &cmds, int pipe_i)
 	{
@@ -128,13 +108,6 @@ public:
 			chart_fifo[chart_fifo_new_id].read_fd = fifo_0;
 			chart_fifo[chart_fifo_new_id].write_fd = fifo_1;
 			
-			//chart_fifo[{user_id, cmd.user_out}] = {fifo_0, fifo_1};
-			//std::cerr << "B" << fifo_0 << " " << fifo_1 << std::endl;
-			//std::cerr << "aa" << fifo << chart_fifo[{user_id, cmd.user_out}] << std::endl;
-			//close(1);
-			//dup(fifo);
-			//close(0);
-			//close(fifo);
 		}
 		if(cmd.user_in != 0)
 		{
@@ -156,7 +129,7 @@ public:
 			chart_fifo[chart_fifo_id].read_fd = fifo_0;
 			chart_fifo[chart_fifo_id].state = 2;
 			
-			kill(users[user_id].pid, SIGUSR2);
+			kill(users[ cmd.user_in ].pid, SIGUSR2);
 			// echo in to close fifo write
 			
 			

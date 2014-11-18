@@ -2,10 +2,14 @@
 #define __STRUCT__
 #include <string>
 
-#define USER_LEN 10
-#define FIFO_LEN 20
-#define MSG_LEN 200
-#define MSG_NUM 5
+#define SHMKEY ((key_t) 5567)
+#define PERMS 0666
+int shmid, clisem, servsem;
+
+#define USER_LEN 30
+#define FIFO_LEN 60
+#define MSG_LEN 1024
+#define MSG_NUM 10
 
 struct user2
 {
@@ -60,6 +64,15 @@ fifo *chart_fifo;
 class struct_utility
 {
 public:
+	static void shm_init()
+	{
+		std::cout << "shared size " << sizeof(shared) << std::endl;
+		if ((shmid = shmget(SHMKEY, sizeof(shared), PERMS|IPC_CREAT))<0)
+			console::error("server: can't get shared memory");	
+		if ( (p_shared = (shared *)shmat(shmid, (char *) 0, 0)) == 0)
+			console::error("...");
+		memset((void*) p_shared, 0, sizeof(shared));
+	}
 	static int find(user us[], int key)
 	{
 		for(int i=1; i<USER_LEN; ++i)
