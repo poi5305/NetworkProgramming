@@ -1,6 +1,7 @@
 #ifndef __STRUCT__
 #define __STRUCT__
 #include <string>
+#include <string.h>
 
 #define SHMKEY ((key_t) 5567)
 #define PERMS 0666
