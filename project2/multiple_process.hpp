@@ -14,8 +14,8 @@ public:
 		// broad cast
 		signal(SIGUSR1, [](int k){
 			std::cout << p_shared->broadcast;
-			if(p_shared->broadcast_user != shell<multiple_process>::g_user_id)
-				std::cout << "% ";
+			//if(p_shared->broadcast_user != shell<multiple_process>::g_user_id)
+			//	std::cout << "% ";
 			std::cout.flush();
 		});
 		// tell msg
@@ -37,8 +37,8 @@ public:
 				{
 					msg.state = 0;
 					std::cout << msg.msg;
-					if(msg.from_user != shell<multiple_process>::g_user_id)
-						std::cout << "% ";
+					//if(msg.from_user != shell<multiple_process>::g_user_id)
+					//	std::cout << "% ";
 					std::cout.flush();
 				}
 			}

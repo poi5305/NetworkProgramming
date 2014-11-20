@@ -45,16 +45,16 @@ public:
 	{
 		for(int i = 1; i<USER_LEN; ++i)
 		{
-		  int u_user_id = i;
-		  auto &u_user = users[u_user_id];
-		  if(u_user.state == 0)
-		  	continue;
-		  std::cout.flush();
-		  update_fd(u_user.socket_fd);
-		  std::cout << msg ;
-		  if( u_user_id != user_id)
-		  	print_success();
-		  std::cout.flush();
+			int u_user_id = i;
+			auto &u_user = users[u_user_id];
+			if(u_user.state == 0)
+				continue;
+			std::cout.flush();
+			update_fd(u_user.socket_fd);
+			std::cout << msg ;
+			//if( u_user_id != user_id)
+			//	print_success();
+			std::cout.flush();
 		}
 		update_fd();
 	}
@@ -64,8 +64,8 @@ public:
 		console::debug(std::string("tell to ")+std::to_string(to_user_id)+" "+msg);
 		update_fd(to_fd);
 		std::cout << msg ;
-		if( to_user_id != user_id)
-		  print_success();
+		//if( to_user_id != user_id)
+		//	print_success();
 		std::cout.flush();
 		update_fd(socket_fd);
 	}
