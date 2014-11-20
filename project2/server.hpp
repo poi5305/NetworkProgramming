@@ -70,7 +70,7 @@ public:
 	
 	static void multiple_process_server(std::string service, std::function<void(int)> server_function)
 	{
-		std::cerr << "multiple process server" << std::endl;
+		//std::cerr << "multiple process server" << std::endl;
 		int master_socket_fd = server::passivsock(service);
 		if(master_socket_fd == -1)
 			master_socket_fd = server::passivsock(std::to_string(atoi( service.c_str() )+1));
@@ -115,7 +115,7 @@ public:
 	
 	static void single_process_server(std::string service, std::function<void(int)> server_function)
 	{
-		std::cerr << "single process server" << std::endl;
+		//std::cerr << "single process server" << std::endl;
 		int master_socket_fd = server::passivsock(service);
 		if(master_socket_fd == -1)
 			master_socket_fd = server::passivsock(std::to_string(atoi( service.c_str() )+1));
@@ -183,7 +183,7 @@ public:
 						close(fd);
 						close(0);dup(master_socket_fd);
 						close(1);dup(master_socket_fd);
-						//close(2);dup(master_socket_fd);
+						close(2);dup(master_socket_fd);
 						FD_CLR(fd, &active_fds);
 						
 					}

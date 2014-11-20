@@ -29,7 +29,7 @@ public:
 		//std::cerr << "close 0, 1. dup " << socket_fd << std::endl;
 		close(0);dup(socket_fd);
 		close(1);dup(socket_fd);
-		//close(2);dup(socket_fd);
+		close(2);dup(socket_fd);
 	}
 	void update_fd(int fd)
 	{
@@ -39,7 +39,7 @@ public:
 		//std::cerr << "close 0, 1. dup " << fd << std::endl;
 		close(0);dup(fd);
 		close(1);dup(fd);
-		//close(2);dup(socket_fd);
+		close(2);dup(socket_fd);
 	}
 	void yell(const std::string &msg)
 	{

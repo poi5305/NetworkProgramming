@@ -37,7 +37,7 @@ public:
 	{
 		if(in != 0) close(0);dup(in);
 		if(out != 1) close(1);dup(out);
-		//if(err != 2) close(2);dup(err);
+		if(err != 2) close(2);dup(err);
 		
 		if(in == out && in == err)
 			close(in);
@@ -84,7 +84,7 @@ public:
 	{
 		close(0);dup(sockfd);
 		close(1);dup(sockfd);
-		//close(2);dup(sockfd);
+		close(2);dup(sockfd);
 		//close(sockfd);
 		pid = getpid();
 		
