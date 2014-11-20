@@ -72,9 +72,9 @@ public:
 		
 		//*** User '(no name)' entered from (IP/port). ***
 		std::string msg;
-		msg += "*** User '(no name)' entered from ("+ip+"/"+port+"). ***\n";
+		msg += "*** User '(no name)' entered from "+ip+"/"+port+". ***\n";
 		this->yell(msg);
-		print_success();
+		//print_success();
 	}
 	
 	
@@ -98,9 +98,9 @@ public:
 		
 		//*** User '(no name)' entered from (IP/port). ***
 		std::string msg;
-		msg += "*** User '(no name)' entered from ("+ip+"/"+port+"). ***\n";
+		msg += "*** User '(no name)' entered from "+ip+"/"+port+". ***\n";
 		this->yell(msg);
-		print_success();
+		//print_success();
 		
 		while(true)
 		{
@@ -268,7 +268,7 @@ private:
 					}
 				}
 				std::string msg;
-				msg += std::string("*** User '(")+ my_name +")' left. ***\n";
+				msg += std::string("*** User '") + my_name + "' left. ***\n";
 				this->yell(msg);
 				
 				this->exit_impl();
@@ -385,7 +385,7 @@ private:
 		}
 		else
 		{
-			std::cout << "*** User '(" << name <<")' already exists. ***" << "\n";
+			std::cout << "*** User '" << name <<"' already exists. ***" << "\n";
 			std::cout.flush();
 			return false;
 		}
