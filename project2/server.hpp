@@ -70,7 +70,7 @@ public:
 	
 	static void multiple_process_server(std::string service, std::function<void(int)> server_function)
 	{
-		//std::cerr << "multiple process server" << std::endl;
+		std::cerr << "multiple process server" << std::endl;
 		int master_socket_fd = server::passivsock(service);
 		if(master_socket_fd == -1)
 			master_socket_fd = server::passivsock(std::to_string(atoi( service.c_str() )+1));
@@ -115,10 +115,12 @@ public:
 	
 	static void single_process_server(std::string service, std::function<void(int)> server_function)
 	{
-		//std::cerr << "single process server" << std::endl;
+		std::cerr << "single process server" << std::endl;
 		int master_socket_fd = server::passivsock(service);
+		
 		if(master_socket_fd == -1)
-			master_socket_fd = server::passivsock(std::to_string(atoi( service.c_str() )+1));
+			console::error("Can't create socket");
+		//	master_socket_fd = server::passivsock(std::to_string(atoi( service.c_str() )+1));
 		
 		int newsockfd, clilen, child_pid;
 		struct sockaddr_in client_addr;
@@ -136,7 +138,6 @@ public:
 		FD_SET(master_socket_fd, &active_fds);
 	
 		std::map<int, shell<single_process>> shell_sets;
-	
 		while(1)
 		{		
 			memcpy(&read_fds, &active_fds, sizeof(read_fds)); /* copy active to read */
@@ -156,10 +157,9 @@ public:
 				if(fd == master_socket_fd)
 				{
 					console::debug("New client create");
-					int clilen;
+
 					int new_socket = accept(master_socket_fd, (struct sockaddr *) &client_addr, (socklen_t *) &clilen);
 					
-					//std::cerr << "new_socket " << new_socket << std::endl;
 					if(new_socket < 0)
 						console::error("Can't accept");
 					FD_SET(new_socket, &active_fds);

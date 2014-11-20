@@ -1,7 +1,7 @@
 #ifndef __CONSOLE__
 #define __CONSOLE__
 
-
+#include <string.h>
 
 #include<iostream>
 class console
@@ -16,14 +16,13 @@ public:
 	}
 	static void error(std::string &&msg)
 	{
-		if(tag)
-			std::cerr << msg << std::endl;
+		printf("Error %s\n", strerror(errno));
+		std::cerr << msg << std::endl;
 		exit(1);
 	}
 	static void log(std::string &&msg)
 	{
-		if(tag)
-			std::cout << msg << std::endl;
+		std::cout << msg << std::endl;
 	}
 };
 
