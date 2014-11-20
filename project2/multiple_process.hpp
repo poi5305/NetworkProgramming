@@ -86,7 +86,7 @@ public:
 		{
 			//std::cerr << "A" << user_id << " " << cmd.user_out << std::endl;
 			std::string fifo_name;
-			fifo_name += "fifo_" + std::to_string(user_id) + "_" + std::to_string(cmd.user_out);
+			fifo_name += "/tmp/andy_fifo_" + std::to_string(user_id) + "_" + std::to_string(cmd.user_out);
 			
 			console::debug(fifo_name);
 			
@@ -113,7 +113,7 @@ public:
 		{
 			//std::cerr << "A" << cmd.user_in << " " << user_id << std::endl;
 			std::string fifo_name;
-			fifo_name += "fifo_" + std::to_string(cmd.user_in) + "_" + std::to_string(user_id);
+			fifo_name += "/tmp/andy_fifo_" + std::to_string(cmd.user_in) + "_" + std::to_string(user_id);
 			
 			console::debug(fifo_name+"in");
 			int fifo_0, fifo_1;
