@@ -71,10 +71,10 @@ public:
 		print_hello();
 		
 		//*** User '(no name)' entered from (IP/port). ***
-		std::string msg;
-		msg += "*** User '(no name)' entered from "+ip+"/"+port+". ***\n";
-		this->yell(msg);
-		//print_success();
+		//std::string msg;
+		//msg += "*** User '(no name)' entered from "+ip+"/"+port+". ***\n";
+		//this->yell(msg);
+		
 	}
 	
 	
@@ -97,10 +97,10 @@ public:
 		print_hello();
 		
 		//*** User '(no name)' entered from (IP/port). ***
-		std::string msg;
-		msg += "*** User '(no name)' entered from "+ip+"/"+port+". ***\n";
-		this->yell(msg);
-		//print_success();
+		//std::string msg;
+		//msg += "*** User '(no name)' entered from "+ip+"/"+port+". ***\n";
+		//this->yell(msg);
+		
 		
 		while(true)
 		{
@@ -131,8 +131,16 @@ public:
 	}
 	void print_hello()
 	{
-		const std::string hello = "****************************************\n** Welcome to the information server. **\n****************************************\n% ";
+		//const std::string hello = "****************************************\n** Welcome to the information server. **\n****************************************\n% ";
+		const std::string hello = "****************************************\n** Welcome to the information server. **\n****************************************\n";
 		std::cout << hello;
+		std::cout.flush();
+		
+		std::string msg;
+		msg = msg + "*** User '(no name)' entered from "+users[user_id].ip+"/"+users[user_id].port+". ***\n";
+		this->yell(msg);
+		
+		std::cout << "% ";
 		std::cout.flush();
 	}
 	void print_success()
@@ -240,10 +248,7 @@ private:
 				auto my_name = users[user_id].name;
 				is_exit = true;
 				//users.erase(user_id);
-				struct_utility::remove(users, user_id);
-				close(socket_fd);
-				close(0);
-				close(1);
+				
 				
 				for(int i=0; i<FIFO_LEN; i++)
 				{
@@ -270,6 +275,12 @@ private:
 				std::string msg;
 				msg += std::string("*** User '") + my_name + "' left. ***\n";
 				this->yell(msg);
+				
+				struct_utility::remove(users, user_id);
+				//close(socket_fd);
+				//close(0);
+				//close(1);
+				//close(2);
 				
 				this->exit_impl();
 				return false;
