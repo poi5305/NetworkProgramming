@@ -65,7 +65,7 @@ public:
 	{}
 	void yell(const std::string &msg)
 	{
-		struct_utility::lock();	
+		struct_utility::lock();
 		strncpy(p_shared->broadcast, msg.c_str(), MSG_LEN);
 		p_shared->broadcast_user = user_id;
 		console::debug("kill yell "+std::to_string(users[user_id].pid));

@@ -30,6 +30,7 @@ int main (int argc, char** argv)
 	signal(SIGUSR2, [](int k){});
 	signal(SIGCHLD, SIG_IGN); // signal(SIGCHLD, childhandler);
 	
+	
 	struct_utility::shm_init();
 	
 	users = p_shared->users;
