@@ -270,7 +270,7 @@ private:
 						//close(fifo.second.second);
 						std::string fifo_name;
 						//fifo_name += "fifo_" + std::to_string(fifo.first.first) + "_" + std::to_string(fifo.first.second);
-						fifo_name += "fifo_" + std::to_string(fifo.from_user) + "_" + std::to_string(fifo.to_user);
+						fifo_name += "/tmp/andy_fifo_" + std::to_string(fifo.from_user) + "_" + std::to_string(fifo.to_user);
 						console::debug(fifo_name);
 						unlink(fifo_name.c_str());
 						fifo.state = 0;
