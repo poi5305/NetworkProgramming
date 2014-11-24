@@ -605,7 +605,7 @@ private:
 				close(fifo.write_fd);
 				
 				std::string fifo_name;
-				fifo_name += "fifo_" + std::to_string(cmd.user_in) + "_" + std::to_string(user_id);
+				fifo_name += "/tmp/andy_fifo_" + std::to_string(cmd.user_in) + "_" + std::to_string(user_id);
 				console::debug(fifo_name);
 				unlink(fifo_name.c_str());
 				//chart_fifo.erase({cmd.user_in, user_id});
