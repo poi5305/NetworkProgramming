@@ -62,7 +62,9 @@ shared *p_shared;
 
 user *users;
 fifo *chart_fifo;
-sem_t mutex;
+sem_t *mutex;
+
+char SEM_NAME[]= "ggg78";
 
 class struct_utility
 {
@@ -75,25 +77,31 @@ public:
 		if ( (p_shared = (shared *)shmat(shmid, (char *) 0, 0)) == 0)
 			console::error("...");
 		memset((void*) p_shared, 0, sizeof(shared));
-		
-		if( sem_init(&mutex,1,1) < 0)
-			console::error("Can't sem init");
+				
+		mutex = sem_open(SEM_NAME, O_CREAT,0644,1);
+		if(mutex == SEM_FAILED)
+	    {
+		    perror("unable to create semaphore");
+			sem_unlink(SEM_NAME);
+			exit(1);
+	    }
 
-		std::cout << "seminit" << std::endl;
 		signal(SIGINT, [](int k){
 			shmdt(p_shared);
 			shmctl(shmid, IPC_RMID, NULL);
-			sem_destroy(&mutex);
+			//sem_destroy(&mutex);
+			sem_close(mutex);
+			sem_unlink(SEM_NAME);
 			exit(0);
 		});
 	}
 	static void lock()
 	{
-		sem_wait(&mutex);
+		sem_wait(mutex);
 	}
 	static void unlock()
 	{
-		sem_post(&mutex);
+		sem_post(mutex);
 	}
 	static int find(user us[], int key)
 	{
