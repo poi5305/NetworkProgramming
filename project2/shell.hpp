@@ -251,11 +251,11 @@ private:
 			}
 			else if(cmd.argv[0] == "exit")
 			{//*** User '(name)' left. ***
-				auto my_name = users[user_id].name;
-				is_exit = true;
-				//users.erase(user_id);
 				
 				struct_utility::lock();
+				auto my_name = users[user_id].name;
+				is_exit = true;
+				
 				for(int i=0; i<FIFO_LEN; i++)
 				{
 					auto &fifo = chart_fifo[i];
@@ -283,7 +283,9 @@ private:
 				msg += std::string("*** User '") + my_name + "' left. ***\n";
 				this->yell(msg);
 				
+				struct_utility::lock();
 				struct_utility::remove(users, user_id);
+				struct_utility::unlock();
 				//close(socket_fd);
 				//close(0);
 				//close(1);
