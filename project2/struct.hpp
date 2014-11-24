@@ -2,6 +2,7 @@
 #define __STRUCT__
 #include <string>
 #include <string.h>
+#include <semaphore.h>  /* Semaphore */
 
 #define SHMKEY ((key_t) 5567)
 #define PERMS 0666
@@ -61,6 +62,7 @@ shared *p_shared;
 
 user *users;
 fifo *chart_fifo;
+sem_t mutex;
 
 class struct_utility
 {
@@ -73,6 +75,25 @@ public:
 		if ( (p_shared = (shared *)shmat(shmid, (char *) 0, 0)) == 0)
 			console::error("...");
 		memset((void*) p_shared, 0, sizeof(shared));
+		
+		if( sem_init(&mutex,1,1) < 0)
+			console::error("Can't sem init");
+
+		std::cout << "seminit" << std::endl;
+		signal(SIGINT, [](int k){
+			shmdt(p_shared);
+			shmctl(shmid, IPC_RMID, NULL);
+			sem_destroy(&mutex);
+			exit(0);
+		});
+	}
+	static void lock()
+	{
+		sem_wait(&mutex);
+	}
+	static void unlock()
+	{
+		sem_post(&mutex);
 	}
 	static int find(user us[], int key)
 	{

@@ -1,12 +1,12 @@
-#ifndef __SHELL__
-#define __SHELL__
+#ifndef __LOCK__
+#define __LOCK__
 
 
 #define SEMKEY 55665566L
 #define PERMS 0666
 #define BIGCOUNT 100
 
-#define SHMKEY ((key_t) 5567)
+//#define SHMKEY ((key_t) 5567)
 #define SEMKEY1 ((key_t) 5568)
 #define SEMKEY2 ((key_t) 5569)
 

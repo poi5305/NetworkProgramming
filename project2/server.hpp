@@ -94,13 +94,15 @@ public:
 				console::debug("New client create");
 				close(master_socket_fd);
 				signal(SIGCHLD, [](int k){});
+				signal(SIGINT, [](int k){});
 				
 				char ip[INET_ADDRSTRLEN];
 				inet_ntop( AF_INET, &(client_addr.sin_addr.s_addr), ip, INET_ADDRSTRLEN );
 				uint16_t port = client_addr.sin_port;
 				//int sockfd, int pid, std::string sockname, std::string ip, std::string port
-				shell<multiple_process> my_sh(newsockfd, child_pid, "(no name)", ip, std::to_string(port));
-				
+				//shell<multiple_process> my_sh(newsockfd, child_pid, "(no name)", ip, std::to_string(port));
+				//CGILAB/511
+				shell<multiple_process> my_sh(newsockfd, child_pid, "(no name)", "CGILAB", "511");
 				exit(0);
 			}
 			else
@@ -167,7 +169,8 @@ public:
 					char ip[INET_ADDRSTRLEN];
 					inet_ntop( AF_INET, &(client_addr.sin_addr.s_addr), ip, INET_ADDRSTRLEN );
 					uint16_t port = client_addr.sin_port;
-					shell_sets.insert({new_socket, shell<single_process>(new_socket, "(no name)", ip, std::to_string(port)) });
+					//shell_sets.insert({new_socket, shell<single_process>(new_socket, "(no name)", ip, std::to_string(port)) });
+					shell_sets.insert({new_socket, shell<single_process>(new_socket, "(no name)", "CGILAB", "511") });
 					
 				}
 				else

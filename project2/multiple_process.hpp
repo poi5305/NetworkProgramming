@@ -13,13 +13,17 @@ public:
 	{
 		// broad cast
 		signal(SIGUSR1, [](int k){
+			struct_utility::lock();
 			std::cout << p_shared->broadcast;
 			//if(p_shared->broadcast_user != shell<multiple_process>::g_user_id)
 			//	std::cout << "% ";
 			std::cout.flush();
+			struct_utility::unlock();
 		});
 		// tell msg
-		signal(SIGUSR2, [](int k){
+		signal(SIGUSR2, [](int k)
+		{
+			struct_utility::lock();
 			for(int i=0; i<FIFO_LEN; i++)
 			{
 				auto &fifo = p_shared->chart_fifo[i];
@@ -42,6 +46,7 @@ public:
 					std::cout.flush();
 				}
 			}
+			struct_utility::unlock();
 		});
 	}
 	void set_id(int uid, int sockfd)
@@ -60,9 +65,11 @@ public:
 	{}
 	void yell(const std::string &msg)
 	{
+		struct_utility::lock();	
 		strncpy(p_shared->broadcast, msg.c_str(), MSG_LEN);
 		p_shared->broadcast_user = user_id;
 		console::debug("kill yell "+std::to_string(users[user_id].pid));
+		struct_utility::unlock();
 		//kill(users[user_id].pid, SIGUSR1);
 		kill(0, SIGUSR1);
 		
@@ -70,12 +77,13 @@ public:
 	void tell(int to_user_id, const std::string &msg)
 	{
 		//int msg_id = get_msg_new_id();
+		struct_utility::lock();
 		int msg_id = struct_utility::get_new_id(p_shared->msgs, MSG_NUM);
 		strncpy(p_shared->msgs[msg_id].msg, msg.c_str(), MSG_LEN);
 		p_shared->msgs[msg_id].state = 1;
 		p_shared->msgs[msg_id].from_user = user_id;
 		p_shared->msgs[msg_id].to_user = to_user_id;
-		
+		struct_utility::unlock();
 		//kill(users[user_id].pid, SIGUSR2);
 		kill(users[to_user_id].pid, SIGUSR2);
 	}
@@ -100,6 +108,7 @@ public:
 			if( (fifo_1 = open( fifo_name.c_str(), O_WRONLY )) < 0)
 				console::error("Can't open fifo 1");
 				
+			struct_utility::lock();
 			//int chart_fifo_new_id = get_chart_fifo_new_id();
 			int chart_fifo_new_id = struct_utility::get_new_id(p_shared->chart_fifo, FIFO_LEN);
 			chart_fifo[chart_fifo_new_id].state = 1;
@@ -107,7 +116,7 @@ public:
 			chart_fifo[chart_fifo_new_id].to_user = cmd.user_out;
 			chart_fifo[chart_fifo_new_id].read_fd = fifo_0;
 			chart_fifo[chart_fifo_new_id].write_fd = fifo_1;
-			
+			struct_utility::unlock();
 		}
 		if(cmd.user_in != 0)
 		{
@@ -121,14 +130,13 @@ public:
 			if( (fifo_0 = open( fifo_name.c_str(), O_RDONLY )) < 0)
 				console::error("Can't open fifo 0");
 			
+			struct_utility::lock();
 			int chart_fifo_id = struct_utility::find(chart_fifo, cmd.user_in, user_id);
-			
 			//std::cerr << "outfork read fd " << fifo_0 <<" chart_fifo_id "<< chart_fifo_id << std::endl;
 			//std::cerr << "user_in " << fifo_0 << socket_fd << std::endl;
-			
 			chart_fifo[chart_fifo_id].read_fd = fifo_0;
 			chart_fifo[chart_fifo_id].state = 2;
-			
+			struct_utility::unlock();
 			kill(users[ cmd.user_in ].pid, SIGUSR2);
 			// echo in to close fifo write
 			

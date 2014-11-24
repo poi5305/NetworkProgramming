@@ -88,11 +88,13 @@ public:
 		//close(sockfd);
 		pid = getpid();
 		
+		struct_utility::lock();
 		g_user_id = user_id = struct_utility::get_new_id(users, USER_LEN, 1);
 		
 		METHOD::set_id(user_id, socket_fd);
 		//std::cerr << "user_id: " << user_id << " " << socket_fd << " pid " << pid << std::endl;
 		struct_utility::active_user(user_id, socket_fd, pid, socket_name, ip, port);
+		struct_utility::unlock();
 		
 		print_hello();
 		
@@ -223,8 +225,12 @@ private:
 				{
 					int to_user_id = atoi(cmd.argv[1].c_str());
 					
+					struct_utility::lock();
+					int user_find = struct_utility::find(users, to_user_id);
+					struct_utility::unlock();
+					
 					//*** Error: user #3 does not exist yet. ***
-					if(struct_utility::find(users, to_user_id) == -1)
+					if(user_find  == -1)
 					//if(users.find(to_user_id) == users.end())
 					{
 						std::cout << "*** Error: user #" << to_user_id << " does not exist yet. ***\n";
@@ -249,7 +255,7 @@ private:
 				is_exit = true;
 				//users.erase(user_id);
 				
-				
+				struct_utility::lock();
 				for(int i=0; i<FIFO_LEN; i++)
 				{
 					auto &fifo = chart_fifo[i];
@@ -272,6 +278,7 @@ private:
 						
 					}
 				}
+				struct_utility::unlock();
 				std::string msg;
 				msg += std::string("*** User '") + my_name + "' left. ***\n";
 				this->yell(msg);
@@ -308,22 +315,35 @@ private:
 	bool exam_fifo_to_user(command &cmd)
 	{
 		// check fifo user exist
-		if(cmd.user_out != 0 && struct_utility::find(users, cmd.user_out) == -1)
-		//if(cmd.user_out != 0 && users.find(cmd.user_out) == users.end())
+		int find_id = -1;
+		
+		struct_utility::lock();
+		find_id = struct_utility::find(users, cmd.user_out);
+		struct_utility::unlock();
+		
+		if(cmd.user_out != 0 &&  find_id == -1)
 		{//*** Error: user #1 does not exist yet. ***
 			std::cout << "*** Error: user #" << cmd.user_out << " does not exist yet. ***\n";
 			std::cout.flush();
 			return false;
 		}
-		//if(cmd.user_out != 0 && chart_fifo.find({user_id, cmd.user_out}) != chart_fifo.end())
-		if(cmd.user_out != 0 && struct_utility::find(chart_fifo, user_id, cmd.user_out) != -1)
+		
+		struct_utility::lock();
+		find_id = struct_utility::find(chart_fifo, user_id, cmd.user_out);
+		struct_utility::unlock();
+		
+		if(cmd.user_out != 0 && find_id != -1)
 		{//*** Error: the pipe #2->#1 already exists. ***
 			std::cout << "*** Error: the pipe #" << user_id << "->#" << cmd.user_out << " already exists. ***\n";
 			std::cout.flush();
 			return false;
 		}
-		//if(cmd.user_in != 0 && chart_fifo.find({cmd.user_in, user_id}) == chart_fifo.end())
-		if(cmd.user_in != 0 && struct_utility::find(chart_fifo, cmd.user_in, user_id) == -1)
+		
+		struct_utility::lock();
+		find_id = struct_utility::find(chart_fifo, cmd.user_in, user_id);
+		struct_utility::unlock();
+		
+		if(cmd.user_in != 0 && find_id == -1)
 		{//*** Error: the pipe #3->#1 does not exist yet. ***
 			std::cout << "*** Error: the pipe #" << cmd.user_in << "->#" << user_id << " does not exist yet. ***\n";
 			std::cout.flush();
@@ -336,13 +356,17 @@ private:
 		if(cmd.user_out != 0)
 		{//*** IamUser (#3) just piped 'cat test.html | cat >1' to Iam1 (#1) ***
 			std::string tmp = "";
+			struct_utility::lock();
 			tmp += std::string("*** ") + users[user_id].name+" (#"+std::to_string(user_id)+") just piped '"+line+"' to "+users[cmd.user_out].name+" (#"+std::to_string(cmd.user_out)+") ***\n";
+			struct_utility::unlock();
 			this->yell(tmp);
 		}
 		if(cmd.user_in != 0)
 		{//*** IamUser (#3) just received from student7 (#7) by 'cat <7' ***
 			std::string tmp = "";
+			struct_utility::lock();
 			tmp += std::string("*** ")+users[user_id].name+" (#"+std::to_string(user_id)+") just received from "+users[cmd.user_in].name+" (#"+std::to_string(cmd.user_in)+") by '"+line+"' ***\n";
+			struct_utility::unlock();
 			this->yell(tmp);
 		}
 	}
@@ -372,6 +396,7 @@ private:
 	}
 	bool is_exist_name(const std::string name)
 	{
+		struct_utility::lock();
 		for(int i = 1; i<USER_LEN; ++i)
 		//for(auto &u_pair : users)
 		{
@@ -381,8 +406,12 @@ private:
 				continue;
 			//auto &u_user = u_pair.second;
 			if(name == u_user.name)
+			{
+				struct_utility::unlock();
 				return true;
+			}		
 		}
+		struct_utility::unlock();
 		return false;
 	}
 	bool change_name(const std::string &name)
@@ -391,7 +420,9 @@ private:
 		{
 			console::debug("change name success");
 			//users[user_id].name = name;
+			struct_utility::lock();
 			strcpy(users[user_id].name, name.c_str());
+			struct_utility::unlock();
 			return true;
 		}
 		else
@@ -403,8 +434,10 @@ private:
 	}
 	void who()
 	{
+		struct_utility::lock();	
 		std::cout << "<ID>	<nickname>	<IP/port>	<indicate me>\n";
 		//for(auto &u_pair : users)
+		
 		for(int i = 1; i<USER_LEN; ++i)
 		//for(auto &u_pair : users)
 		{
@@ -420,6 +453,7 @@ private:
 				std::cout << "\n";
 		}
 		std::cout.flush();
+		struct_utility::unlock();
 	}
 	
 	std::string test_filename(std::string &f)
@@ -453,6 +487,7 @@ private:
 	
 	void fifo_handler(std::vector<command> &cmds, int pipe_i)
 	{ // in fork
+		struct_utility::lock();
 		auto &cmd = cmds[pipe_i];
 		if(cmd.user_out != 0)
 		{
@@ -474,6 +509,7 @@ private:
 			close(fifo.write_fd);
 			fifo.state = 0;
 		}
+		struct_utility::unlock();
 	}
 	void pipe_tofile(std::vector<command> &cmds, int pipe_i)
 	{
@@ -554,6 +590,7 @@ private:
 			console::debug("run_command_impl");
 			run_command_impl(cmds, pipe_i);	 // fork
 			
+			struct_utility::lock();
 			// close fifo, the user receive msg, than close fifo
 			if(struct_utility::find(chart_fifo, cmd.user_in, user_id) != -1)
 			{
@@ -572,6 +609,8 @@ private:
 				//chart_fifo.erase({cmd.user_in, user_id});
 				//fifo.state = 0;
 			}
+			struct_utility::unlock();
+			
 			// close pipe
 			auto iter = pipes.find(cmd.command_idx);
 			if( iter != pipes.end())
