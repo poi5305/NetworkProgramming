@@ -49,7 +49,7 @@ public:
 			auto &u_user = users[u_user_id];
 			if(u_user.state == 0)
 				continue;
-			std::cout.flush();
+			//std::cout.flush();
 			update_fd(u_user.socket_fd);
 			std::cout << msg ;
 			//if( u_user_id != user_id)
