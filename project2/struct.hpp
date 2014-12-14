@@ -8,8 +8,8 @@
 #define PERMS 0666
 int shmid, clisem, servsem;
 
-#define USER_LEN 30
-#define FIFO_LEN 60
+#define USER_LEN 31
+#define FIFO_LEN 62
 #define MSG_LEN 1024
 #define MSG_NUM 10
 

@@ -225,6 +225,25 @@ private:
 				{
 					int to_user_id = atoi(cmd.argv[1].c_str());
 					
+					if(to_user_id == 0)
+					{//name
+						//std::cerr << "name " << cmd.argv[1] << std::endl;
+						struct_utility::lock();
+						for(int i=0; i<USER_LEN; i++)
+						{
+							//if(strcmp("(no name)", cmd.argv[1].c_str()))
+							//	continue;
+							//std::cerr << "name " << cmd.argv[1] << " " << users[i].name << std::endl;
+							int kk = strcmp(cmd.argv[1].c_str(), users[i].name);
+							if(kk == 0)
+							{
+								to_user_id = i;
+								break;
+							}
+						}
+						struct_utility::unlock();
+					}
+					
 					struct_utility::lock();
 					int user_find = struct_utility::find(users, to_user_id);
 					struct_utility::unlock();

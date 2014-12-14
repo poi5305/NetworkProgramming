@@ -71,8 +71,13 @@ public:
 		console::debug("kill yell "+std::to_string(users[user_id].pid));
 		struct_utility::unlock();
 		//kill(users[user_id].pid, SIGUSR1);
-		kill(0, SIGUSR1);
-		
+		for(int i=1; i< USER_LEN; i++)
+		{
+			if(users[i].state == 0)
+				continue;
+			kill(users[i].pid, SIGUSR1);
+		}
+		//kill(0, SIGUSR1);
 	}
 	void tell(int to_user_id, const std::string &msg)
 	{
