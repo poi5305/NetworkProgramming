@@ -210,14 +210,14 @@ public:
 	void set_env()
 	{
 		setenv("QUERY_STRING", httpd_para.query.c_str(), 1);
-		setenv("CONTENT_LENGTH", "9999", 1);
 		setenv("REQUEST_METHOD", httpd_para.method.c_str(), 1);
 		setenv("SCRIPT_NAME", httpd_para.file.c_str(), 1);
-		setenv("REMOTE_HOST", "somewhere.nctu.edu.tw", 1);
-		setenv("REMOTE_ADDR", "140.113.1.1", 1);
+		setenv("CONTENT_LENGTH", "5566", 1);
 		setenv("AUTH_TYPE", "auth_type", 1);
+		setenv("REMOTE_HOST", "ca.nctu.edu.tw", 1);
 		setenv("REMOTE_USER", "remote_user", 1);
 		setenv("REMOTE_IDENT", "remote_ident", 1);
+		setenv("REMOTE_ADDR", "8.8.8.8", 1);
 	}
 	std::string test_filename(std::string &f)
 	{

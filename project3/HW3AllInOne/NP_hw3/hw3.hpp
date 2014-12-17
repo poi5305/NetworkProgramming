@@ -119,10 +119,6 @@ public:
 
 		//int state;
 		int state = connect(client.sockfd, (sockaddr *)&client.server_addr, sizeof(client.server_addr));
-
-		
-
-		//std::cerr << "state: " << state << " fd: "<< client.sockfd << " Connect: " << client.ip << ":" << client.port << " " << client.txt << " " << client.server->h_addr << std::endl;
 		return client.sockfd;
 	}
 
@@ -228,133 +224,47 @@ public:
 	}
 	int winrun(int active_fd, int active_type)
 	{
-		switch (active_type)
+		
+		int closeid = clients.size();
+		for (int i = 0; i < clients.size(); i++)
 		{
-			case FD_CONNECT:
-				for (auto &client : clients)
+			auto &client = clients[i];
+			if (active_fd != client.sockfd)
+				continue;
+			if (active_type == FD_CONNECT)
+			{
+				int state = connect(client.sockfd, (sockaddr *)&client.server_addr, sizeof(client.server_addr));
+				int err = WSAGetLastError();
+				if (err == WSAEWOULDBLOCK)
 				{
-					if (active_fd == client.sockfd)
-						client.is_connected = true;
+					print_html(client, "Connect Failed!", true);
+					closeid = i;
+					break;
 				}
-				//break;
-			case FD_READ:
-				
-				for (auto &client : clients)
-				{
-					if (active_fd != client.sockfd || !client.is_connected)
-						continue;
-					//active
-					recv_msg(client);
-				}
-			case FD_WRITE:
-				for (auto &client : clients)
-				{
-					if (active_fd != client.sockfd || !client.is_connected)
-						continue;
-					//active
-					send_msg(client);
-					if (client.is_exit)
-					{
-						std::cerr << "FINISH" << std::endl;
-						closesocket(client.sockfd);
-					}
-				}
-				bool all_finish = true;
-				for (auto &client : clients)
-				{
-					if (!client.is_exit)
-						all_finish = false;
-				}
-				if (all_finish)
-				{
-					print_footer();
-					std::cerr << "All Finish" << std::endl;
-					return 1;
-				}
+			}
 
-				break;
+			recv_msg(client);
+
+			send_msg(client);
+			if (client.is_exit)
+				closeid = i;
+			
 		}
+		if (closeid != clients.size())
+		{
+			clients.erase(clients.begin() + closeid);
+			closesocket(closeid);
+		}
+			
+
+		if (clients.size() == 0)
+		{
+			print_footer();
+			std::cerr << "All Finish" << std::endl;
+			return 1;
+		}
+
 		return 0;
-	}
-	void run()
-	{
-		int nfds = max_fd + 5;
-		//int nfds = getdtablesize();
-		//nfds = 8;
-		while (true)
-		{
-			memcpy(&rfds, &afds, sizeof(fd_set));
-			//if(select(nfds, &rfds, (fd_set *)0, (fd_set *)0, (struct timeval *)0) < 0)
-			std::cerr << "AAAA " << std::endl;
-			if (select(nfds, &rfds, NULL, NULL, NULL) < 0)
-			{
-				std::cerr << errno << "\n";
-				perror("cannot select");
-			}
-			std::cerr << "BBB " << std::endl;
-			for (auto &client : clients)
-			{
-				auto client_fd = client.sockfd;
-				if (FD_ISSET(client_fd, &rfds))
-				{
-					std::cerr << "active " << client_fd << std::endl;
-					if (!client.is_connected)
-					{
-						int state = 0;
-						//int state = connect(client.sockfd, (sockaddr *)&client.server_addr, sizeof(client.server_addr));
-						if (state == 0)
-							client.is_connected = true;
-						else if (state < 0)
-						{
-							perror("cannot connect");
-							if (errno == EISCONN)
-								client.is_connected = true;
-							else if (errno == EINVAL)
-							{ // bsd Invalid argument
-								closesocket(client_fd);
-								FD_CLR(client_fd, &afds);
-								int sockfd = new_client(client.id, client.ip, client.port, client.txt, &client);
-								if (sockfd > max_fd) max_fd = sockfd;
-								//max_fd = std::max(max_fd, sockfd);
-								FD_SET(sockfd, &afds);
-							}
-						}
-						//std::cerr << "active " << client_fd << " " << state << " " << errno << " "<< EISCONN<< std::endl;
-						//sleep(1);
-						continue; // if not connected, then continue
-					}
-					// already connect
-					std::cerr << "Connected~" << client_fd << std::endl;
-
-					std::cerr << "recv~" << client_fd << std::endl;
-					recv_msg(client);
-					std::cerr << "send~" << client_fd << std::endl;
-					send_msg(client);
-					std::cerr << "send end~" << client_fd << std::endl;
-					if (client.is_exit)
-					{
-						std::cerr << "FINISH" << std::endl;
-						FD_CLR(client_fd, &afds);
-						closesocket(client_fd);
-					}
-				}
-			}
-
-			// check is all client finish
-			bool all_finish = true;
-			for (auto &client : clients)
-			{
-				std::cerr << "check " << client.sockfd << " " << client.is_exit << std::endl;
-				if (!client.is_exit)
-					all_finish = false;
-			}
-			if (all_finish)
-			{
-				std::cerr << "All Finish" << std::endl;
-				break;
-			}
-			//sleep(1);
-		}
 	}
 	void get_query_string()
 	{

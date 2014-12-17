@@ -56,6 +56,7 @@ BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 	int sfd;
 	int err;
 	
+	std::vector<int> close_httpds;
 
 	gp.hwnd = &hwnd;
 	gp.Message = &Message;
@@ -136,72 +137,62 @@ BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 					Socks.push_back(ssock);
 					EditPrintf(hwndEdit, TEXT("=== Accept one new client(%d - %d), List size:%d ===\r\n"), ssock, wParam, Socks.size());
 					break;
-				case FD_CONNECT:
-					
-					//if (httpds.find(ssock) != httpds.end())
-					//{
-					//	if (wParam == httpds[ssock].hw3.clients[0].sockfd)
-					//		httpds[ssock].hw3.recv_msg(httpds[ssock].hw3.clients[0]);
-					//}
-					//EditPrintf(hwndEdit, TEXT("=== CONNECT one new client(%d - %d), List size:%d ===\r\n"), ssock, wParam, Socks.size());
-
-					break;
 				case FD_READ:
 					
-					//HTTPD httpd(wParam);
-					//if (httpds.find(ssock) != httpds.end())
-					//{
-					//	if (wParam == httpds[ssock].hw3.clients[0].sockfd)
-					//		httpds[ssock].hw3.recv_msg(httpds[ssock].hw3.clients[0]);
-					//}
 					if (httpds.find(ssock) == httpds.end())
-					{
-						httpds[ssock].init(wParam);
+					{	// new browser fd
+						httpds[ssock].init(ssock);
 					}
-					if (httpds.find(wParam) == httpds.end())
-					{
-						if (httpds[ssock].is_close)
-							httpds.erase(ssock);
-						//EditPrintf(hwndEdit, TEXT("=== READ size %d ===\r\n"), httpds.size());
+					else
+					{  //not new browse fd, active client, exam httpd is close
+						for (auto &httpds_pair : httpds)
+						{
+							//auto &sockfd = httpds_pair.first;
+							if (httpds_pair.second.is_close)
+								close_httpds.push_back(httpds_pair.first);
+						}
 					}
-
-					
 					EditPrintf(hwndEdit, TEXT("=== READ one new client(%d - %d), List size:%d ===\r\n"), ssock, wParam, Socks.size());
 					break;
 				case FD_WRITE:
-				//Write your code for write event here
-					//if (httpds.find(ssock) != httpds.end())
-					//{
-					//	if (wParam == httpds[ssock].hw3.clients[0].sockfd)
-					//	httpds[ssock].hw3.send_msg(httpds[ssock].hw3.clients[0]);
-					//}
-					//closesocket(ssock);
 					EditPrintf(hwndEdit, TEXT("=== WRITE one new client(%d - %d), List size:%d ===\r\n"), ssock, wParam, Socks.size());
 					break;
 				case FD_CLOSE:
+					closesocket(wParam);
+					if (httpds.find(wParam) != httpds.end())
+					{
+						httpds.erase(wParam);
+					}
 					EditPrintf(hwndEdit, TEXT("=== close one new client(%d - %d), List size:%d ===\r\n"), ssock, wParam, Socks.size());
 					break;
 				
 			};
-
-			if (httpds.find(ssock) != httpds.end())
+			for (auto &httpds_pair : httpds)
 			{
-				if (httpds[ssock].is_cgi)
+				if (httpds_pair.second.is_cgi)
 				{
-					int state = httpds[ssock].hw3.winrun(wParam, WSAGETSELECTEVENT(lParam));
+					httpds_pair.second.change_fd();
+					int state = httpds_pair.second.hw3.winrun(wParam, WSAGETSELECTEVENT(lParam));
 					if (state == 1)
 					{ // all finish
-						closesocket(ssock);
-						httpds.erase(ssock);
+						close_httpds.push_back(httpds_pair.first);
+						//httpds.erase(sockfd);
 					}
 				}
+				if (httpds_pair.second.is_close)
+					close_httpds.push_back(httpds_pair.first);
 			}
-
+			for (auto &sockfd : close_httpds)
+			{
+				closesocket(sockfd);
+				httpds.erase(sockfd);
+			}
+			close_httpds.clear();
+			
 			break;
 		
 		default:
 			return FALSE;
-
 
 	};
 
