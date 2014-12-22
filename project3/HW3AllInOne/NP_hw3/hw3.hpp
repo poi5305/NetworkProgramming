@@ -42,7 +42,7 @@ struct Client
 	int txt_idx;
 	bool is_connected;
 	bool is_write;
-	bool is_exit;
+	int is_exit;
 	std::string ip;
 	std::string txt;
 	std::vector<std::string> txt_content;
@@ -237,17 +237,20 @@ public:
 				int err = WSAGetLastError();
 				if (err == WSAEWOULDBLOCK)
 				{
-					print_html(client, "Connect Failed!", true);
-					closeid = i;
-					break;
+					print_html(client, "Connect Timeout!! Try again!", true);
+			//		print_html(client, "Connect Failed!", true);
+			//		closeid = i;
+			//		break;
 				}
 			}
 
 			recv_msg(client);
 
 			send_msg(client);
-			if (client.is_exit)
+			if (client.is_exit == 2)
 				closeid = i;
+			if (client.is_exit == 1)
+				client.is_exit = 2;
 			
 		}
 		if (closeid != clients.size())
