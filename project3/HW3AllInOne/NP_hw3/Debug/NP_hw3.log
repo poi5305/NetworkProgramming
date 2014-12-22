@@ -1,0 +1,28 @@
+﻿已經開始建置於 2014/12/17 下午 08:57:21。
+節點 2 (Build 目標) 上的專案 "E:\project3\HW3AllInOne\NP_hw3\NP_hw3.vcxproj"。
+ClCompile:
+  C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\CL.exe /c /ZI /nologo /W3 /WX- /Od /Oy- /D WIN32 /D _DEBUG /D _CONSOLE /D _UNICODE /D UNICODE /Gm /EHsc /RTC1 /MTd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"Debug\\" /Fd"Debug\vc120.pdb" /Gd /TP /analyze- /errorReport:prompt NP_hw3.cpp
+  NP_hw3.cpp
+e:\project3\hw3allinone\np_hw3\hw3.hpp(9): warning C4005: 'errno' : 巨集重複定義
+          c:\program files (x86)\microsoft visual studio 12.0\vc\include\stdlib.h(246) : 請參閱 'errno' 之前的定義
+e:\project3\hw3allinone\np_hw3\hw3.hpp(13): warning C4018: '<' : signed/unsigned 不相符
+e:\project3\hw3allinone\np_hw3\hw3.hpp(22): warning C4018: '<' : signed/unsigned 不相符
+e:\project3\hw3allinone\np_hw3\hw3.hpp(181): warning C4996: 'strtok': This function or variable may be unsafe. Consider using strtok_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+          c:\program files (x86)\microsoft visual studio 12.0\vc\include\string.h(204) : 請參閱 'strtok' 的宣告
+e:\project3\hw3allinone\np_hw3\hw3.hpp(173): warning C4101: 'i' : 未參考的區域變數
+e:\project3\hw3allinone\np_hw3\hw3.hpp(229): warning C4018: '<' : signed/unsigned 不相符
+e:\project3\hw3allinone\np_hw3\hw3.hpp(275): warning C4996: 'getenv': This function or variable may be unsafe. Consider using _dupenv_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+          c:\program files (x86)\microsoft visual studio 12.0\vc\include\stdlib.h(462) : 請參閱 'getenv' 的宣告
+e:\project3\hw3allinone\np_hw3\hw3.hpp(282): warning C4018: '<' : signed/unsigned 不相符
+e:\project3\hw3allinone\np_hw3\httpd.hpp(248): warning C4018: '<' : signed/unsigned 不相符
+e:\project3\hw3allinone\np_hw3\np_hw3.cpp(56): warning C4101: 'sfd' : 未參考的區域變數
+Link:
+  C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"Debug\NP_hw3.exe" /INCREMENTAL /NOLOGO ws2_32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"Debug\NP_hw3.pdb" /SUBSYSTEM:WINDOWS /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"Debug\NP_hw3.lib" /MACHINE:X86 /SAFESEH Debug\NP_hw3.res
+  Debug\NP_hw3.obj
+NP_hw3.obj : warning LNK4075: 忽略 '/EDITANDCONTINUE'，由於 '/SAFESEH' 規格
+  NP_hw3.vcxproj -> E:\project3\HW3AllInOne\NP_hw3\Debug\NP_hw3.exe
+專案 "E:\project3\HW3AllInOne\NP_hw3\NP_hw3.vcxproj" (Build 目標) 建置完成。
+
+建置成功。
+
+經過時間 00:00:16.40
