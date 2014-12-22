@@ -108,6 +108,7 @@ public:
 		{
 			std::vector<command> pipes = cmd_parser.parse_line();
 			line = cmd_parser.line;
+			//std::cerr << line << std::endl;
 			debug_cmd(pipes);
 			if(exam_command(pipes))
 				run_command(pipes);

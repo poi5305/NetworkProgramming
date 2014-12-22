@@ -211,13 +211,13 @@ public:
 		{
 			memcpy(&rfds, &afds, sizeof(fd_set));
 			//if(select(nfds, &rfds, (fd_set *)0, (fd_set *)0, (struct timeval *)0) < 0)
-			std::cerr << "AAAA "<< std::endl;
+			//std::cerr << "AAAA "<< std::endl;
 			if(select(nfds, &rfds, NULL, NULL, NULL) < 0)
 			{
 				std::cerr << errno << "\n";
 				perror("cannot select");
 			}
-			std::cerr << "BBB "<< std::endl;
+			//std::cerr << "BBB "<< std::endl;
 			for (auto &client : clients)
 			{
 				auto client_fd = client.sockfd;
@@ -248,16 +248,15 @@ public:
 						continue; // if not connected, then continue
 					}
 					// already connect
-					std::cerr << "Connected~" << client_fd << std::endl;
-					
-					std::cerr << "recv~" << client_fd << std::endl;
+					//std::cerr << "Connected~" << client_fd << std::endl;
+					//std::cerr << "recv~" << client_fd << std::endl;
 					recv_msg(client);
-					std::cerr << "send~" << client_fd << std::endl;
+					//std::cerr << "send~" << client_fd << std::endl;
 					send_msg(client);
-					std::cerr << "send end~" << client_fd << std::endl;
+					//std::cerr << "send end~" << client_fd << std::endl;
 					if(client.is_exit)
 					{
-						std::cerr << "FINISH" << std::endl;
+						//std::cerr << "FINISH" << std::endl;
 						FD_CLR(client_fd, &afds);
 						close(client_fd);
 					}
@@ -268,13 +267,13 @@ public:
 			bool all_finish = true;
 			for (auto &client : clients)
 			{
-				std::cerr << "check " << client.sockfd << " " << client.is_exit << std::endl;
+				//std::cerr << "check " << client.sockfd << " " << client.is_exit << std::endl;
 				if(!client.is_exit)
 					all_finish = false;
 			}
 			if(all_finish)
 			{
-				std::cerr << "All Finish" << std::endl;
+				//std::cerr << "All Finish" << std::endl;
 				break;
 			}	
 			//sleep(1);

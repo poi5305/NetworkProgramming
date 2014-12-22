@@ -3,16 +3,15 @@ login1
 1| ****************************************
 1| ** Welcome to the information server. **
 1| ****************************************
-1| % *** User '(no name)' entered from (255.127.0.0/25555). ***
+1| *** User '(no name)' entered from CGILAB/511. ***
 1| % 
 
 login2
-1| *** User '(no name)' entered from (127.0.0.1/31742). ***
-1| % 
+1| *** User '(no name)' entered from CGILAB/511. ***
 2| ****************************************
 2| ** Welcome to the information server. **
 2| ****************************************
-2| % *** User '(no name)' entered from (127.0.0.1/31742). ***
+2| *** User '(no name)' entered from CGILAB/511. ***
 2| % 
 
 1 % printenv PATH
@@ -41,27 +40,12 @@ login2
 1| % 
 
 2 % cat
-2|    1 a.out
-2|    2 baozi
-2|    3 bin
-2|    4 console.hpp
-2|    5 lock.hpp
-2|    6 ls.txt
-2|    7 multiple_process.hpp
-2|    8 parser.hpp
-2|    9 project02.bak
-2|   10 project02.cpp
-2|   11 project2_test
-2|   12 server.hpp
-2|   13 shell.hpp
-2|   14 shell2.hpp
-2|   15 shell3.hpp
-2|   16 single_process.hpp
-2|   17 struct.hpp
-2|   18 test.cpp
-2|   19 test.html
-2|   20 test1.txt
-2|   21 test2.txt
+2|    1 baozi
+2|    2 bin
+2|    3 ls.txt
+2|    4 test1.txt
+2|    5 test2.txt
+2|    6 test.html
 2| <!test.html>
 2| <TITLE>Test<TITLE>
 2| <BODY>This is a <b>test</b> program
@@ -80,27 +64,12 @@ login2
 1| % 
 
 1 % cat ls.txt
-1| a.out
 1| baozi
 1| bin
-1| console.hpp
-1| lock.hpp
 1| ls.txt
-1| multiple_process.hpp
-1| parser.hpp
-1| project02.bak
-1| project02.cpp
-1| project2_test
-1| server.hpp
-1| shell.hpp
-1| shell2.hpp
-1| shell3.hpp
-1| single_process.hpp
-1| struct.hpp
-1| test.cpp
-1| test.html
 1| test1.txt
 1| test2.txt
+1| test.html
 1| % 
 
 2 % removetag test.html | number
@@ -120,9 +89,10 @@ login2
 1| % 
 
 logout1
+1| *** User '(no name)' left. ***
 2| *** User '(no name)' left. ***
-2| % 
 
 logout2
+2| *** User '(no name)' left. ***
 
 exit
