@@ -223,7 +223,7 @@ public:
 				auto client_fd = client.sockfd;
 				if (FD_ISSET(client_fd, &rfds))
 				{
-					std::cerr << "active " << client_fd << std::endl;
+					//std::cerr << "active " << client_fd << std::endl;
 					if(!client.is_connected)
 					{
 						int state = connect(client.sockfd, (sockaddr *) &client.server_addr, (socklen_t)sizeof(client.server_addr));
@@ -231,16 +231,24 @@ public:
 							client.is_connected = true;
 						else if(state < 0)
 						{
-							perror("cannot connect");
 							if(errno == EISCONN)
 								client.is_connected = true;
 							else if(errno == EINVAL)
 							{ // bsd Invalid argument
+								perror("cannot connect");
 								close(client_fd);
 								FD_CLR(client_fd, &afds);
 								int sockfd = new_client(client.id, client.ip, client.port, client.txt, &client);
 								max_fd = std::max(max_fd, sockfd);
 								FD_SET(sockfd, &afds);
+							}
+							else if(errno == ECONNREFUSED)
+							{
+								perror("cannot connect");
+								print_html(client, "Connect Refused", true);
+								client.is_exit = true;
+								FD_CLR(client_fd, &afds);
+								close(client_fd);
 							}
 						}
 						//std::cerr << "active " << client_fd << " " << state << " " << errno << " "<< EISCONN<< std::endl;
