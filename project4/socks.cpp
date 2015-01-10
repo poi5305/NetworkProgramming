@@ -17,6 +17,8 @@
 #include <netdb.h>
 #include <unistd.h>
 #include <sys/uio.h>
+#include <cstdio>
+#include <array>
 
 #include <string>
 #include <vector>
@@ -46,6 +48,17 @@ struct Client
 	uint32_t ip;
 	struct sockaddr_in server_addr;
 };
+struct Permit_ip
+{
+	Permit_ip()
+		:ips(4)
+	{}
+	std::vector<std::string> ips;
+	//std::string ip1;
+	//std::string ip2;
+	//std::string ip3;
+	//std::string ip4;
+};
 
 class SOCKS
 {
@@ -54,47 +67,184 @@ class SOCKS
 	int b_sockfd;
 	REQUEST_INFO request_info;
 	Client client;
-	
+	int is_bind;
 	fd_set wfds, rfds, afds;
-	
+	std::vector<Permit_ip> b_permit_ips;
+	std::vector<Permit_ip> c_permit_ips;
 public:
 	
 	SOCKS(int fd)
-		:s_sockfd(fd)
+		:s_sockfd(fd), is_bind(false)
 	{
 		std::cerr << "NEW CLIENT" << std::endl;
+		conf();
 		FD_ZERO(&rfds);
 		FD_ZERO(&afds);
 		init();
+	}
+	void parse_ips(std::vector<std::string> &ips, std::string line)
+	{
+		int idx = 0;
+		for(int i=0; i<line.size(); i++)
+		{
+			//std::cerr << line << " "<<  line.size() << " : " << line[i] << std::endl;
+			if(line[i] == '.')
+				idx++;
+			else if(line[i] == ' ')
+				break;
+			else if(idx == 4)
+				break;
+			else
+				ips[idx].push_back(line[i]);
+		}
+	}
+	void parse_conf(std::string &line)
+	{
+		if(line.size() < 12 || line.substr(0, 6) != "permit")
+			return;
+		
+		Permit_ip ip;
+		parse_ips(ip.ips, line.substr(9));
+		
+		if(line[7] == 'b')
+			b_permit_ips.push_back(ip);
+		else if(line[7] == 'c')
+			c_permit_ips.push_back(ip);
+	}
+	void conf()
+	{
+		std::ifstream file("socks.conf");
+		std::string line;
+		char ip1[4], ip2[4], ip3[4], ip4[4];
+		while(!file.eof() && file.good() && std::getline(file, line))
+			parse_conf(line);
+		
+		for(auto kk : b_permit_ips)
+			std::cout << kk.ips[0] << kk.ips[1] << kk.ips[2] << kk.ips[3] << std::endl;
+	}
+	bool check_ip_pattern(std::string permit, std::string other)
+	{
+		std::cerr << permit << " : " << other << std::endl;
+		if(permit == "*" || permit == other)
+			return true;
+		return false;
+	}
+	bool check_ip(char type, in_addr &addr)
+	{
+		char *some_addr;
+		some_addr = inet_ntoa(addr);
+		//printf("THIS %s\n", some_addr); // prints "10.0.0.1"
+		
+		std::string ip_line (some_addr);
+		std::vector<std::string> ips(4);
+		std::cerr << "B " << ip_line<< std::endl;
+		parse_ips(ips, ip_line);
+		
+		std::cerr << "this" << std::endl;
+		std::cout << ips[0] << ips[1] << ips[2] << ips[3] << std::endl;
+		
+		bool is_allow = false;
+		
+		std::vector<Permit_ip> *p_premits_ip;
+		if(type == 'b')
+			p_premits_ip = &b_permit_ips;
+		else
+			p_premits_ip = &c_permit_ips;
+		
+		for(Permit_ip &permit_ip : *p_premits_ip)
+		{
+			if(	check_ip_pattern(permit_ip.ips[0], ips[0])
+				&& check_ip_pattern(permit_ip.ips[1], ips[1])
+				&& check_ip_pattern(permit_ip.ips[2], ips[2])
+				&& check_ip_pattern(permit_ip.ips[3], ips[3]))
+			{
+				is_allow = true;
+				break;
+			}
+		}
+		std::cerr << "is allow " << is_allow << std::endl;
+		return is_allow;
 	}
 	void init()
 	{
 		std::cerr << "sockfd " << s_sockfd << " "<< sizeof(long) << std::endl;
 		get_request();
-		int state = create_client();
 		
-		FD_SET(c_sockfd, &afds);
-		FD_SET(s_sockfd, &afds);
-		
-		if(state == -1)
+		if(request_info.cd == 2)
 		{
-			send_request(false);
-			std::cerr << "client fail" << std::endl;
+			
+			client.ip = 0;
+			//client.port = 3000;
+			srand(time(NULL));
+			
+			client.port = (rand() % 30000)+10000;
+			
+			std::cerr << "======= BIND ===== "<< client.port << std::endl;
+			is_bind = true;
+			
+			int tmp_fd = 0;
+			while ((tmp_fd = server::passivsock(std::to_string(client.port)) ) == -1 )
+			{
+				client.port += 2;
+				std::cerr << "server retry "<< client.port << std::endl;
+				
+			}
+			send_request(true);
+			std::cerr << "port"<< client.port << " fd " << tmp_fd << std::endl;
+			//struct sockaddr_in client_addr;
+			int tmp_client;
+			c_sockfd = accept(tmp_fd, (struct sockaddr *) &(client.server_addr), (socklen_t *) &tmp_client);
+			
+			if(!check_ip('b', client.server_addr.sin_addr))
+			{
+				send_request(false);
+				exit(0);
+			}
+			
+			close(tmp_fd);
+			if(c_sockfd == -1)
+			{
+				perror("cannot accept");
+			}
+			send_request(true);
+			std::cerr << "bind sockfd:" << c_sockfd << tmp_fd << " port " <<client.port << std::endl;
+			
+			FD_SET(c_sockfd, &afds);
+			FD_SET(s_sockfd, &afds);
+			
+			run();
+			
+			//std::cerr << "RUN finish" << std::endl;
+		}
+		else if(request_info.cd == 1)
+		{
+			int state = create_client();
+			
+			
+			FD_SET(c_sockfd, &afds);
+			FD_SET(s_sockfd, &afds);
+			
+			if(state == -1)
+			{
+				send_request(false);
+				std::cerr << "client fail" << std::endl;
+				exit(0);
+			}
+			else
+			{
+				send_request(true);
+				std::cerr << "client success" << std::endl;
+			}
+			std::cerr << "state " << state << std::endl;
+			
+			
+			run();
 		}
 		else
 		{
-			if(request_info.cd == 2)
-			{
-				b_sockfd = server::passivsock(std::to_string(client.port+1));
-				std::cerr << "bind sockfd:" << b_sockfd << std::endl;
-			}
-			send_request(true);
-			std::cerr << "client success" << std::endl;
+			send_request(false);
+			exit(0);
 		}
-		std::cerr << "state " << state << std::endl;
-		
-		
-		run();
 		
 	}
 	void close_all()
@@ -113,7 +263,7 @@ public:
 		char c_buf[4097];
 		
 		struct timeval ts;
-		ts.tv_sec = 6;
+		ts.tv_sec = 300;
 		ts.tv_usec = 0;
 		
 		int retry = 0;
@@ -130,7 +280,7 @@ public:
 			}
 			//std::cerr << "select wait finish "<< select_state << FD_ISSET(c_sockfd, &rfds)<< FD_ISSET(s_sockfd, &rfds) << std::endl;
 			
-			if(select_state == 0)
+			if(select_state == 0 && !is_bind)
 			{
 				std::cerr << "========== Time OUT ==========" << std::endl;
 				close_all();
@@ -147,7 +297,6 @@ public:
 				
 				if(len == 0)
 				{
-					//std::cerr << "CLOSE" << std::endl;
 					close_all();
 				}
 			}
@@ -158,17 +307,14 @@ public:
 				int len2 = write(c_sockfd, s_buf, len);
 				if(len == 0)
 				{
-					//std::cerr << "inactive ssockfd" << std::endl;
-					//FD_CLR(s_sockfd, &afds);
 					close_all();
 				}
-				//std::cerr << "BB len len2 " << len << " " << len2 << std::endl;
 			}
 		}
 	}	
 	void parse_request(char *buf, int len)
 	{
-		if(len == 9)
+		if(len >= 9)
 		{
 			request_info.vn = buf[0];
 			request_info.cd = buf[1];
@@ -204,6 +350,7 @@ public:
 		parse_request(buf, len);
 		std::cerr << "fffget_request len " << len << " len2 " << len2 << std::endl;
 	}
+	
 	void send_request(bool success)
 	{
 		char pack[8];
@@ -214,14 +361,14 @@ public:
 		pack[3] = client.port%256;
 		pack[4] = client.ip >> 24;
 		pack[5] = (client.ip>>16) & 0xFF;
-		pack[6] = (client.ip>8) & 0xFF;
+		pack[6] = (client.ip>>8) & 0xFF;
 		pack[7] = client.ip & 0xFF;
 		
 		if(!success)
 			pack[1] = (uint8_t)91;
 		std::cerr << (int) pack[1] << std::endl;
 		int len = write(s_sockfd, pack, 8);
-		std::cerr << "send r " << len << std::endl;
+		std::cerr << "send r " << len << " " << client.ip << " " << client.port << std::endl;
 	}
 	int create_client()
 	{
@@ -240,27 +387,15 @@ public:
 		
 		print_ip(client.server_addr.sin_addr);
 		
+		if(!check_ip('c', client.server_addr.sin_addr))
+			return -1;
+		
 		//int flags = fcntl(client.sockfd, F_GETFL, 0);
 		//fcntl(client.sockfd, F_SETFL, flags | O_NONBLOCK);
 		
 		int state = connect(client.sockfd, (sockaddr *) &client.server_addr, sizeof(client.server_addr));
 		
 		
-		
-		/*
-		int state = 0;
-		int times = 50;
-		while(true)
-		{
-			times--;
-			usleep(100000);
-			state = connect(client.sockfd, (sockaddr *) &client.server_addr, sizeof(client.server_addr));
-			if(state == 0)
-				return 0;
-			if(times == 0)
-				break;
-		}
-		*/
 		return state;
 	}
 	

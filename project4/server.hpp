@@ -97,7 +97,12 @@ public:
 		else
 			sin.sin_port = htons( (u_short)( atoi(service.c_str()) ) );
 		if(sin.sin_port == 0)
-			console::error("Can't get service entry");
+		{
+			std::cerr << "Can't get service entry" << std::endl;
+			return -1;
+		}
+			
+			//console::error("Can't get service entry");
 		
 		///@brief set protocol (udp or tcp)
 		p_protocol_info = getprotobyname(protocol.c_str());
@@ -115,7 +120,7 @@ public:
 		if( bind(socket_fd, (struct sockaddr*)&sin, sizeof(sin)) < 0)
 			return -1;//console::error("Can't bind socket");
 		if(socket_type == SOCK_STREAM)
-			if(listen(socket_fd, 0)<0)
+			if(listen(socket_fd, 1)<0)
 				console::error("Can't listen socket");
 		return socket_fd;
 	}
